@@ -1,0 +1,11 @@
+node_modules/
+.firebase/
+*.log
+opencode-sk-*.json
+*adminsdk*.json
+service-account*.json
+.env
+.env.*
+網址.txt
+.DS_Store
+.superpowers/
