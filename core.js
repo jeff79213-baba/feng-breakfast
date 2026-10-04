@@ -128,3 +128,125 @@ export function peopleFor(target, b1, b2) {
   if (t === 'b2') return headOf(b2);
   return peopleSum(b1, b2);
 }
+
+/* ---------- 內建預設值 ---------- */
+
+export const DEFAULT_PREP = {
+  riceAdult: 0.2, riceChild: 0.1,
+  porridgeAdult: 0.2, porridgeChild: 0.1,
+  eggRatio: 1.5, eggStock: 0, eggReserveCount: 0, eggReservePct: 0,
+};
+
+export const DEFAULT_SLOTS = [
+  { id: 's0800', label: '08:00', enabled: true, milk: 1, foil: 12 },
+  { id: 's0830', label: '08:30', enabled: true, milk: 1, foil: 12 },
+  { id: 's0900', label: '09:00', enabled: true, milk: 1, foil: 12 },
+  { id: 's0930', label: '09:30', enabled: true, milk: 1, foil: 12 },
+  { id: 's1000', label: '10:00', enabled: true, milk: 1, foil: 12 },
+];
+
+export const DEFAULT_PANTRY = [
+  '小白菜', '地瓜葉', '空心菜', '高麗菜', 'A菜',
+  '絲瓜', '苦瓜', '番茄', '馬鈴薯', '洋蔥',
+  '雞胸肉', '雞腿排', '豬五花', '豬絞肉', '牛肉片',
+  '虱目魚', '鮭魚', '蝦仁', '豆芽', '高麗菜苗',
+].map((name, i) => ({ id: `p${String(i + 1).padStart(2, '0')}`, name, inFridge: false }));
+
+/* ---------- 備料 ---------- */
+
+const round1 = n => Math.round(n * 10) / 10;
+const num = (v, fallback) => {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : fallback;
+};
+
+export function prepBase(target, cfg, day) {
+  const c = { ...DEFAULT_PREP, ...(cfg || {}) };
+  const d = day || {};
+  const head = peopleFor(target, d.b1, d.b2);
+  const rice = round1(head.adult * c.riceAdult + head.kid * c.riceChild);
+  const porridge = round1(head.adult * c.porridgeAdult + head.kid * c.porridgeChild);
+  const rawEgg = head.total * c.eggRatio;
+  const egg = Math.max(0, Math.round(
+    rawEgg - c.eggStock + c.eggReserveCount + (rawEgg * c.eggReservePct) / 100,
+  ));
+  return { head, rice, porridge, egg };
+}
+
+export function prepLine(base, extra) {
+  const b = num(base, 0);
+  const e = Math.max(0, num(extra, 0));
+  return { base: b, extra: e, total: round1(b + e) };
+}
+
+/* ---------- 飲料補貨 ---------- */
+
+export function drinkTotals(slots, cfg, state) {
+  const c = cfg || {};
+  const milkPerSlot = num(c.milkPerSlot, 1);
+  const foilPerSlot = num(c.foilPerSlot, 12);
+  const drinks = (state && state.drinks) || {};
+  const rows = (Array.isArray(slots) ? slots : [])
+    .filter(s => s && s.enabled !== false && String(s.label || '').trim())
+    .map(s => {
+      const o = drinks[s.id] || {};
+      return {
+        id: s.id,
+        label: String(s.label).trim(),
+        milk: num(o.milk, num(s.milk, milkPerSlot)),
+        foil: num(o.foil, num(s.foil, foilPerSlot)),
+        done: !!o.done,
+      };
+    });
+  const sum = key => rows.reduce((a, r) => a + r[key], 0);
+  const sumPending = key => rows.filter(r => !r.done).reduce((a, r) => a + r[key], 0);
+  return {
+    rows,
+    milk: sum('milk'),
+    foil: sum('foil'),
+    pendingMilk: sumPending('milk'),
+    pendingFoil: sumPending('foil'),
+  };
+}
+
+/* ---------- 冰箱庫存 ---------- */
+
+export function pantrySplit(items) {
+  const has = [];
+  const buy = [];
+  for (const it of (Array.isArray(items) ? items : [])) {
+    (it && it.inFridge ? has : buy).push(it);
+  }
+  return { has, buy };
+}
+
+/* ---------- 勾選摘要 ---------- */
+
+export function summaryLine(items) {
+  const list = (Array.isArray(items) ? items : [])
+    .map(x => String(x == null ? '' : x).trim())
+    .filter(Boolean);
+  return list.length ? list.join('、') : '（未選）';
+}
+
+/* ---------- CSV ---------- */
+
+export function csvEscape(value) {
+  if (value == null) return '';
+  const s = String(value);
+  return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+}
+
+export function buildCsv(rows) {
+  const body = (Array.isArray(rows) ? rows : [])
+    .map(r => (Array.isArray(r) ? r : []).map(csvEscape).join(','))
+    .join('\r\n');
+  return `\uFEFF${body}`;
+}
+
+/* ---------- 帳號 ---------- */
+
+export function emailOf(account) {
+  const a = String(account == null ? '' : account).trim().toLowerCase();
+  return `${a}@fzbf.app`;
+}
