@@ -160,8 +160,22 @@ const num = (v, fallback) => {
   return Number.isFinite(n) ? n : fallback;
 };
 
+// 設定檔裡「沒填」的值（null／undefined／空字串／NaN／Infinity）不算覆寫，
+// 交給 DEFAULT_PREP 補預設，避免 20 * null = 0 讓備料整片歸零。
+const usable = v => v !== null && v !== undefined && v !== ''
+  && !(typeof v === 'number' && !Number.isFinite(v));
+
+const prepCfg = cfg => {
+  const src = (cfg && typeof cfg === 'object') ? cfg : {};
+  const given = {};
+  for (const k of Object.keys(src)) {
+    if (usable(src[k])) given[k] = src[k];
+  }
+  return { ...DEFAULT_PREP, ...given };
+};
+
 export function prepBase(target, cfg, day) {
-  const c = { ...DEFAULT_PREP, ...(cfg || {}) };
+  const c = prepCfg(cfg);
   const d = day || {};
   const head = peopleFor(target, d.b1, d.b2);
   const rice = round1(head.adult * c.riceAdult + head.kid * c.riceChild);
@@ -233,7 +247,9 @@ export function summaryLine(items) {
 
 export function csvEscape(value) {
   if (value == null) return '';
-  const s = String(value);
+  const raw = String(value);
+  // Excel 公式注入：開頭是 = + - @ Tab CR 的欄位加單引號前綴，否則開檔即執行
+  const s = /^[=+\-@\t\r]/.test(raw) ? `'${raw}` : raw;
   return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }
 

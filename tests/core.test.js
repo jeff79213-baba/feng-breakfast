@@ -187,6 +187,33 @@ test('prepBase 合計目標用 all', () => {
   assert.equal(out.egg, 71);     // round(47*1.5) = round(70.5) = 71
 });
 
+test('prepBase 係數為 null 或 NaN 時改用 DEFAULT_PREP 而不是歸零', () => {
+  // Firestore 會把數字欄清空存成 null；NaN 同理
+  const day = { b1: { rooms: 10, adult: 20, child: 5, infant: 2 } };
+  const nullCfg = prepBase('b1', { riceAdult: null }, day);
+  assert.equal(nullCfg.rice, 4.7);       // 20*0.2 + 7*0.1，非 20*null + 7*0.1 = 0.7
+  assert.equal(nullCfg.porridge, 4.7);
+  assert.equal(nullCfg.egg, 41);         // eggRatio 未給 → 預設 1.5
+  const nanCfg = prepBase('b1', { eggRatio: NaN }, day);
+  assert.equal(nanCfg.egg, 41);          // round(27*1.5)，非 NaN
+  assert.equal(nanCfg.rice, 4.7);
+});
+
+test('prepBase 只給部分係數時其餘沿用 DEFAULT_PREP', () => {
+  const day = { b1: { rooms: 1, adult: 10, child: 0, infant: 0 } };
+  const out = prepBase('b1', { eggStock: 5 }, day);
+  assert.equal(out.rice, 2);             // 預設 riceAdult 0.2 → 10*0.2
+  assert.equal(out.porridge, 2);
+  assert.equal(out.egg, 10);             // round(10*1.5 - 5) = 10
+});
+
+test('prepBase 係數為 undefined 或 Infinity 或空字串時視為未設定', () => {
+  const day = { b1: { rooms: 1, adult: 10, child: 0, infant: 0 } };
+  assert.equal(prepBase('b1', { eggStock: undefined }, day).egg, 15);   // round(15 - 0)
+  assert.equal(prepBase('b1', { eggReservePct: Infinity }, day).egg, 15);
+  assert.equal(prepBase('b1', { eggStock: '' }, day).egg, 15);
+});
+
 test('prepLine 顯示 base ＋額外 ＝合計', () => {
   assert.deepEqual(prepLine(6.7, 2), { base: 6.7, extra: 2, total: 8.7 });
   assert.deepEqual(prepLine(6.7, 0), { base: 6.7, extra: 0, total: 6.7 });
@@ -259,4 +286,20 @@ test('buildCsv 開頭帶 BOM 且每列欄位數一致', () => {
   const lines = csv.replace('\uFEFF', '').split('\r\n');
   assert.equal(lines[0], '日期,項目');
   assert.equal(lines[1], '2026-10-04,小白菜');
+});
+
+test('csvEscape 開頭是公式字元時加單引號前綴擋掉注入', () => {
+  assert.equal(csvEscape('=1+1'), "'=1+1");
+  assert.equal(csvEscape('+SUM(A1)'), "'+SUM(A1)");
+  assert.equal(csvEscape('-2+3'), "'-2+3");
+  assert.equal(csvEscape('@A1'), "'@A1");
+  assert.equal(csvEscape('\t開頭'), "'\t開頭");
+  assert.equal(csvEscape('\r開頭'), '"\'\r開頭"');
+  assert.equal(csvEscape('小白菜'), '小白菜', '正常值不得被加前綴');
+  assert.equal(csvEscape('說"好吃",很讚'), '"說""好吃"",很讚"', '正常值轉義不變');
+});
+
+test('buildCsv 會轉義含逗號、引號、換行的欄位', () => {
+  const csv = buildCsv([['菜色', '備註'], ['說"好吃",很讚', '第一行\n第二行']]);
+  assert.equal(csv, '\uFEFF菜色,備註\r\n"說""好吃"",很讚","第一行\n第二行"');
 });
