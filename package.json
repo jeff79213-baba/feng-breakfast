@@ -1,0 +1,16 @@
+{
+  "name": "feng-breakfast",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:rules": "vitest run tests/rules.test.js",
+    "deploy": "firebase deploy --only hosting,firestore"
+  },
+  "devDependencies": {
+    "vitest": "5.0.3",
+    "firebase-tools": "^14.0.0"
+  }
+}
