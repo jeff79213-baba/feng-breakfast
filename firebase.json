@@ -13,7 +13,9 @@
       "package.json",
       "package-lock.json",
       "vitest.config.js",
+      "vitest.rules.config.js",
       "firestore.rules",
+      "*.md",
       "網址.txt"
     ],
     "rewrites": [{ "source": "/api/**", "function": "fzapi" }],
