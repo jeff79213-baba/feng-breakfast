@@ -160,8 +160,6 @@ const num = (v, fallback) => {
   return Number.isFinite(n) ? n : fallback;
 };
 
-// 設定檔裡「沒填」的值（null／undefined／空字串／NaN／Infinity）不算覆寫，
-// 交給 DEFAULT_PREP 補預設，避免 20 * null = 0 讓備料整片歸零。
 const usable = v => v !== null && v !== undefined && v !== ''
   && !(typeof v === 'number' && !Number.isFinite(v));
 
@@ -248,7 +246,6 @@ export function summaryLine(items) {
 export function csvEscape(value) {
   if (value == null) return '';
   const raw = String(value);
-  // Excel 公式注入：開頭是 = + - @ Tab CR 的欄位加單引號前綴，否則開檔即執行
   const s = /^[=+\-@\t\r]/.test(raw) ? `'${raw}` : raw;
   return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }

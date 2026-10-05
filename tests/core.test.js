@@ -19,9 +19,7 @@ test('keyOf 組出日期鍵', () => {
 });
 
 test('dateKey 以 Asia/Taipei 判定日期（UTC 深夜也要算台北的今天）', () => {
-  // 2026-10-04T16:30Z = 2026-10-05 00:30 台北
   assert.equal(dateKey(new Date('2026-10-04T16:30:00Z')), '2026-10-05');
-  // 2026-10-03T15:30Z = 2026-10-03 23:30 台北
   assert.equal(dateKey(new Date('2026-10-03T15:30:00Z')), '2026-10-03');
 });
 
@@ -47,10 +45,8 @@ test('monthMatrix 以週日為每週起點，並補齊前後月', () => {
   const weeks = monthMatrix(2026, 10);
   assert.ok(weeks.length >= 5 && weeks.length <= 6);
   for (const row of weeks) assert.equal(row.length, 7);
-  // 2026-10-01 是星期四，前面補 4 天（週日~週三）
   assert.equal(weeks[0][0], '2026-09-27');
   assert.equal(weeks[0][4], '2026-10-01');
-  // 最後一列必須含 10/31
   const flat = weeks.flat();
   assert.ok(flat.includes('2026-10-31'));
   assert.ok(!flat.includes('2026-11-01'));
@@ -154,7 +150,6 @@ test('prepBase 飯粥蛋用成人0.2 小孩0.1，小孩含嬰幼兒', () => {
     b2: { rooms: 0, adult: 0, child: 0, infant: 0 },
   };
   const out = prepBase('b1', DEFAULT_PREP, day);
-  // kid = 5 + 2 = 7；total = 27
   assert.equal(out.head.kid, 7);
   assert.equal(out.head.total, 27);
   assert.equal(out.rice, 4.7);      // 20*0.2 + 7*0.1 = 4 + 0.7
@@ -165,7 +160,6 @@ test('prepBase 飯粥蛋用成人0.2 小孩0.1，小孩含嬰幼兒', () => {
 test('prepBase 茶葉蛋套用 eggStock 與 eggReserveCount 與 eggReservePct', () => {
   const day = { b1: { rooms: 1, adult: 10, child: 0, infant: 0 } };
   const cfg = { ...DEFAULT_PREP, eggStock: 5, eggReserveCount: 3, eggReservePct: 10 };
-  // raw = 10*1.5 = 15；15 - 5 + 3 + 15*10/100 = 14.5 → 15
   assert.equal(prepBase('b1', cfg, day).egg, 15);
 });
 
@@ -188,7 +182,6 @@ test('prepBase 合計目標用 all', () => {
 });
 
 test('prepBase 係數為 null 或 NaN 時改用 DEFAULT_PREP 而不是歸零', () => {
-  // Firestore 會把數字欄清空存成 null；NaN 同理
   const day = { b1: { rooms: 10, adult: 20, child: 5, infant: 2 } };
   const nullCfg = prepBase('b1', { riceAdult: null }, day);
   assert.equal(nullCfg.rice, 4.7);       // 20*0.2 + 7*0.1，非 20*null + 7*0.1 = 0.7
