@@ -17,6 +17,8 @@ const db = getFirestore();
 
 const WEB_API_KEY = 'AIzaSyD3quPJCOUoUH_Um5UceWXYuUXfRpJEuyo';
 
+const API = '/api/fz';
+
 const EMAIL_DOMAIN = 'fzbf.app';
 const MAX_FAILS = 5;
 const LOCK_MINUTES = 15;
@@ -25,7 +27,7 @@ const MAX_PASSWORD = 72;
 const MAX_ACCOUNT = 32;
 const MAX_EMAIL = 64;
 
-const SHORT_ACCOUNT_RE = /^[a-z0-9][a-z0-9._-]{0,31}$/;
+const SHORT_ACCOUNT_RE = /^[a-z0-9][a-z0-9._+-]{0,31}$/;
 const FULL_EMAIL_RE = /^[a-z0-9][a-z0-9._+-]*@[a-z0-9][a-z0-9.-]*\.[a-z]{2,}$/;
 
 const ALLOWED_ORIGINS = ['https://fzbf-sk.web.app', 'http://localhost:5000'];
@@ -106,6 +108,13 @@ async function readAccountDoc(uid) {
 }
 
 async function recordFailure(attemptRef, account) {
+  const before = await attemptRef.get();
+  const beforeCount = before.exists ? before.data().count : undefined;
+  if (beforeCount !== undefined && typeof beforeCount !== 'number') {
+    await attemptRef.set({
+      count: 0, updatedAt: FieldValue.serverTimestamp(),
+    }, { merge: true });
+  }
   await attemptRef.set({
     count: FieldValue.increment(1),
     account,
@@ -158,13 +167,14 @@ function logServerError(err, req) {
   console.error(`[fzapi] ${head} :: ${detail}`);
 }
 
-api.post('/fz/login', loginLimiter, async (req, res) => {
+api.post(`${API}/login`, loginLimiter, async (req, res) => {
   const body = req.body || {};
-  const password = String(body.password || '');
-  if (!password) return res.status(400).json({ error: '請輸入帳號與密碼' });
-
   const account = normalizeAccount(body.account);
-  const email = resolveEmail(body.account);
+  const password = String(body.password || '');
+
+  if (!account || !password) return res.status(400).json({ error: '請輸入帳號與密碼' });
+
+  const email = resolveEmail(account);
   if (!email) return res.status(400).json({ error: '帳號格式不正確，請重新輸入' });
 
   const attemptRef = db.doc(`fz_login_attempts/${email}`);
@@ -210,14 +220,14 @@ api.post('/fz/login', loginLimiter, async (req, res) => {
   });
 });
 
-api.get('/fz/me', apiLimiter, requireAuth, async (req, res) => {
+api.get(`${API}/me`, apiLimiter, requireAuth, async (req, res) => {
   const acct = await readAccountDoc(req.uid);
   if (!acct) return res.status(403).json({ error: '查無帳號' });
   if (acct.disabled === true) return res.status(403).json({ error: '此帳號已停用' });
   return res.json({ uid: req.uid, account: acct.account, role: acct.role });
 });
 
-api.post('/fz/change-password', apiLimiter, requireAuth, async (req, res) => {
+api.post(`${API}/change-password`, apiLimiter, requireAuth, async (req, res) => {
   const body = req.body || {};
   const currentPassword = String(body.currentPassword || '');
   const newPassword = String(body.newPassword || '');
