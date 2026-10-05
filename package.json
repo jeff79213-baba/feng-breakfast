@@ -6,7 +6,7 @@
   "scripts": {
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:rules": "vitest run tests/rules.test.js",
+    "test:rules": "vitest run --config vitest.rules.config.js",
     "deploy": "firebase deploy --only hosting,firestore"
   },
   "devDependencies": {
