@@ -1,0 +1,31 @@
+{
+  "hosting": {
+    "site": "fzbf-sk",
+    "public": ".",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**",
+      "functions/**",
+      "tools/**",
+      "tests/**",
+      "docs/**",
+      "package.json",
+      "package-lock.json",
+      "vitest.config.js",
+      "firestore.rules",
+      "網址.txt"
+    ],
+    "rewrites": [{ "source": "/api/**", "function": "fzapi" }],
+    "headers": [
+      {
+        "source": "/sw.js",
+        "headers": [{ "key": "Cache-Control", "value": "no-cache" }]
+      }
+    ]
+  },
+  "firestore": {
+    "rules": "firestore.rules"
+  },
+  "functions": [{ "source": "functions" }]
+}

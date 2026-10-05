@@ -1,0 +1,49 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function acct() {
+      return get(/databases/$(database)/documents/fz_accounts/$(request.auth.uid));
+    }
+    // 停用判斷以 fz_accounts 為準：Auth 停用後 ID token 仍有效最長 1 小時
+    function active() {
+      return request.auth != null
+          && exists(/databases/$(database)/documents/fz_accounts/$(request.auth.uid))
+          && acct().data.disabled == false;
+    }
+    function isOwner() {
+      return active() && acct().data.role == 'owner';
+    }
+
+    // 帳號與登入紀錄只能由 Cloud Functions（Admin SDK）寫入
+    match /fz_accounts/{uid} {
+      allow read:  if active() && (request.auth.uid == uid || isOwner());
+      allow write: if false;
+    }
+    match /fz_login_attempts/{a} {
+      allow read, write: if false;
+    }
+
+    // 每日資料：三個目標各自獨立，只有 active 員工可讀寫
+    match /fz_days/{date} {
+      allow read, write: if active();
+    }
+
+    // 冰箱庫存：全域共用一份
+    match /fz_pantry/{doc} {
+      allow read, write: if active();
+    }
+
+    // 設定：菜色庫人人可加，其餘欄位僅主帳號
+    match /fz_config/app {
+      allow read:   if active();
+      allow create: if isOwner();
+      allow update: if isOwner()
+        || request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['dishLib', 'updatedAt', 'updatedBy']);
+      allow delete: if false;
+    }
+
+    match /{document=**} { allow read, write: if false; }
+  }
+}
