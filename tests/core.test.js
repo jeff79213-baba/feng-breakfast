@@ -152,9 +152,9 @@ test('prepBase 飯粥蛋用成人0.2 小孩0.1，小孩含嬰幼兒', () => {
   const out = prepBase('b1', DEFAULT_PREP, day);
   assert.equal(out.head.kid, 7);
   assert.equal(out.head.total, 27);
-  assert.equal(out.rice, 4.7);      // 20*0.2 + 7*0.1 = 4 + 0.7
+  assert.equal(out.rice, 4.7);
   assert.equal(out.porridge, 4.7);
-  assert.equal(out.egg, 41);        // round(27*1.5 - 0 + 0 + 0) = round(40.5) = 41
+  assert.equal(out.egg, 41);
 });
 
 test('prepBase 茶葉蛋套用 eggStock 與 eggReserveCount 與 eggReservePct', () => {
@@ -177,32 +177,32 @@ test('prepBase 合計目標用 all', () => {
   const out = prepBase('all', DEFAULT_PREP, day);
   assert.equal(out.head.rooms, 18);
   assert.equal(out.head.total, 47);
-  assert.equal(out.rice, 8.3);   // 36*0.2 + 11*0.1 = 7.2 + 1.1
-  assert.equal(out.egg, 71);     // round(47*1.5) = round(70.5) = 71
+  assert.equal(out.rice, 8.3);
+  assert.equal(out.egg, 71);
 });
 
 test('prepBase 係數為 null 或 NaN 時改用 DEFAULT_PREP 而不是歸零', () => {
   const day = { b1: { rooms: 10, adult: 20, child: 5, infant: 2 } };
   const nullCfg = prepBase('b1', { riceAdult: null }, day);
-  assert.equal(nullCfg.rice, 4.7);       // 20*0.2 + 7*0.1，非 20*null + 7*0.1 = 0.7
+  assert.equal(nullCfg.rice, 4.7);
   assert.equal(nullCfg.porridge, 4.7);
-  assert.equal(nullCfg.egg, 41);         // eggRatio 未給 → 預設 1.5
+  assert.equal(nullCfg.egg, 41);
   const nanCfg = prepBase('b1', { eggRatio: NaN }, day);
-  assert.equal(nanCfg.egg, 41);          // round(27*1.5)，非 NaN
+  assert.equal(nanCfg.egg, 41);
   assert.equal(nanCfg.rice, 4.7);
 });
 
 test('prepBase 只給部分係數時其餘沿用 DEFAULT_PREP', () => {
   const day = { b1: { rooms: 1, adult: 10, child: 0, infant: 0 } };
   const out = prepBase('b1', { eggStock: 5 }, day);
-  assert.equal(out.rice, 2);             // 預設 riceAdult 0.2 → 10*0.2
+  assert.equal(out.rice, 2);
   assert.equal(out.porridge, 2);
-  assert.equal(out.egg, 10);             // round(10*1.5 - 5) = 10
+  assert.equal(out.egg, 10);
 });
 
 test('prepBase 係數為 undefined 或 Infinity 或空字串時視為未設定', () => {
   const day = { b1: { rooms: 1, adult: 10, child: 0, infant: 0 } };
-  assert.equal(prepBase('b1', { eggStock: undefined }, day).egg, 15);   // round(15 - 0)
+  assert.equal(prepBase('b1', { eggStock: undefined }, day).egg, 15);
   assert.equal(prepBase('b1', { eggReservePct: Infinity }, day).egg, 15);
   assert.equal(prepBase('b1', { eggStock: '' }, day).egg, 15);
 });
