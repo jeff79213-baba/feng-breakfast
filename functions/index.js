@@ -264,6 +264,154 @@ api.post(`${API}/change-password`, apiLimiter, requireAuth, async (req, res) => 
   return res.json({ ok: true });
 });
 
+function listAccounts() {
+  return db.collection('fz_accounts').orderBy('account').get();
+}
+
+function publicView(a) {
+  return {
+    uid: a.id,
+    account: a.account || '',
+    role: a.role || 'staff',
+    disabled: a.disabled === true,
+    mustChangePassword: a.mustChangePassword === true,
+    createdAt: a.createdAt || null,
+  };
+}
+
+async function countEnabledOwners() {
+  const snap = await db.collection('fz_accounts')
+    .where('role', '==', 'owner')
+    .where('disabled', '==', false)
+    .get();
+  return snap.size;
+}
+
+api.get(`${API}/accounts`, apiLimiter, requireAuth, requireOwner, async (req, res) => {
+  const snap = await listAccounts();
+  return res.json({ accounts: snap.docs.map(d => publicView({ id: d.id, ...d.data() })) });
+});
+
+api.post(`${API}/accounts`, apiLimiter, requireAuth, requireOwner, async (req, res) => {
+  const account = normalizeAccount(req.body && req.body.account);
+  const password = String((req.body && req.body.password) || '');
+
+  const email = resolveEmail(account);
+  if (!email) {
+    return res.status(400).json({ error: '帳號格式不正確：1–32 位英數字，可用 . _ + -，需以英數字開頭' });
+  }
+  const weak = weakMessage(password);
+  if (weak) return res.status(400).json({ error: weak });
+
+  let created;
+  try {
+    created = await auth.createUser({
+      email,
+      password,
+      emailVerified: false,
+      disabled: false,
+    });
+  } catch (e) {
+    if (e.code === 'auth/email-already-exists') {
+      return res.status(409).json({ error: '此帳號已存在' });
+    }
+    return res.status(400).json({ error: '建立失敗：' + (e.code || e.message) });
+  }
+
+  await db.doc(`fz_accounts/${created.uid}`).set({
+    account,
+    role: 'staff',
+    disabled: false,
+    mustChangePassword: true,
+    createdAt: FieldValue.serverTimestamp(),
+    createdBy: req.uid,
+    updatedAt: FieldValue.serverTimestamp(),
+  });
+
+  return res.json({ uid: created.uid, account, role: 'staff' });
+});
+
+api.put(`${API}/accounts/:uid`, apiLimiter, requireAuth, requireOwner, async (req, res) => {
+  const uid = String(req.params.uid || '');
+  const body = req.body || {};
+  const target = await readAccountDoc(uid);
+  if (!target) return res.status(404).json({ error: '查無此帳號' });
+
+  const patch = { updatedAt: FieldValue.serverTimestamp(), updatedBy: req.uid };
+  const authPatch = {};
+
+  if (typeof body.disabled === 'boolean') {
+    if (uid === req.uid && body.disabled) {
+      return res.status(400).json({ error: '不可停用自己的帳號' });
+    }
+    if (target.role === 'owner' && body.disabled === true && (await countEnabledOwners()) <= 1) {
+      return res.status(400).json({ error: '至少需保留一位啟用中的主帳號' });
+    }
+    patch.disabled = body.disabled;
+    authPatch.disabled = body.disabled;
+  }
+
+  if (body.role && ['owner', 'staff'].includes(body.role)) {
+    if (uid === req.uid && body.role !== 'owner') {
+      return res.status(400).json({ error: '不可降級自己的權限' });
+    }
+    if (target.role === 'owner' && body.role !== 'owner' && (await countEnabledOwners()) <= 1) {
+      return res.status(400).json({ error: '至少需保留一位主帳號' });
+    }
+    patch.role = body.role;
+  }
+
+  if (typeof body.password === 'string' && body.password !== '') {
+    const weak = weakMessage(body.password);
+    if (weak) return res.status(400).json({ error: weak });
+    authPatch.password = body.password;
+    patch.mustChangePassword = true;
+  }
+
+  const changed = Object.keys(patch).filter(k => k !== 'updatedAt' && k !== 'updatedBy');
+  if (changed.length === 0) {
+    return res.status(400).json({ error: '沒有要更新的欄位' });
+  }
+
+  if (Object.keys(authPatch).length > 0) {
+    await auth.updateUser(uid, authPatch);
+    if (authPatch.password) {
+      try {
+        await auth.revokeRefreshTokens(uid);
+      } catch (e) {
+        logServerError(e, req);
+      }
+    }
+  }
+  await db.doc(`fz_accounts/${uid}`).update(patch);
+  const after = await readAccountDoc(uid);
+  return res.json({ ok: true, account: publicView({ id: uid, ...after }) });
+});
+
+api.delete(`${API}/accounts/:uid`, apiLimiter, requireAuth, requireOwner, async (req, res) => {
+  const uid = String(req.params.uid || '');
+  if (uid === req.uid) return res.status(400).json({ error: '不可刪除自己的帳號' });
+  const target = await readAccountDoc(uid);
+  if (!target) return res.status(404).json({ error: '查無此帳號' });
+
+  const targetEmail = resolveEmail(target.account);
+  if (!targetEmail) {
+    return res.status(400).json({ error: '此帳號資料不完整，請先修正帳號欄位' });
+  }
+  if (target.role === 'owner' && (await countEnabledOwners()) <= 1) {
+    return res.status(400).json({ error: '至少需保留一位啟用中的主帳號' });
+  }
+
+  try {
+    await auth.deleteUser(uid);
+  } catch (e) {
+    console.warn('auth.deleteUser 失敗', uid, e && e.code);
+  }
+  await db.doc(`fz_accounts/${uid}`).delete();
+  await db.doc(`fz_login_attempts/${targetEmail}`).delete().catch(() => {});
+  return res.json({ ok: true });
+});
+
 api.use((req, res) => res.status(404).json({ error: '找不到對應的端點' }));
 
 api.use((err, req, res, next) => {
@@ -275,14 +423,7 @@ api.use((err, req, res, next) => {
   return res.status(500).json({ error: '伺服器發生錯誤' });
 });
 
-module.exports = { api };
-module.exports.loginLimiter = loginLimiter;
-module.exports.apiLimiter = apiLimiter;
-module.exports.requireAuth = requireAuth;
-module.exports.requireOwner = requireOwner;
-module.exports.normalizeAccount = normalizeAccount;
-module.exports.toEmail = toEmail;
-module.exports.weakMessage = weakMessage;
-module.exports.readAccountDoc = readAccountDoc;
-module.exports.resolveEmail = resolveEmail;
-module.exports.toMillis = toMillis;
+exports.fzapi = onRequest(
+  { cors: false, invoker: 'public' },
+  api,
+);
