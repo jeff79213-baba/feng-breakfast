@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1f7a5a">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>風自然早餐生產規劃</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="stylesheet" href="style.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='26'>🍳</text></svg>">
+</head>
+<body>
+
+<section id="view-login" class="view" hidden>
+  <div class="login-card">
+    <h1 class="login-title">風自然早餐生產規劃</h1>
+    <p class="login-sub">請使用主帳號發給你的帳號登入</p>
+    <label class="field">
+      <span class="field-label">帳號</span>
+      <input id="loginAccount" type="text" inputmode="latin" autocomplete="username" placeholder="wind">
+    </label>
+    <label class="field">
+      <span class="field-label">密碼</span>
+      <span class="pw-wrap">
+        <input id="loginPassword" type="password" autocomplete="current-password" placeholder="請輸入密碼">
+        <button type="button" class="pw-toggle" onclick="togglePw('loginPassword',this)" aria-label="顯示密碼"></button>
+      </span>
+    </label>
+    <p class="hint">密碼至少 6 碼。本系統需連網才能使用。</p>
+    <p id="loginError" class="error" hidden></p>
+    <button id="loginBtn" class="btn btn-primary btn-block" type="button">登入</button>
+  </div>
+</section>
+
+<section id="view-calendar" class="view" hidden>
+  <header class="topbar">
+    <button class="topbar-btn" data-go="settings" type="button">設定</button>
+    <h1 class="topbar-title">早餐生產規劃</h1>
+    <button class="topbar-btn" data-go="logout" type="button">登出</button>
+  </header>
+  <div class="cal-nav">
+    <button id="calPrev" class="btn btn-ghost" type="button">‹</button>
+    <span id="calLabel" class="cal-label"></span>
+    <button id="calNext" class="btn btn-ghost" type="button">›</button>
+  </div>
+  <div class="cal-today">
+    <button id="calToday" class="btn btn-ghost" type="button">回到今天</button>
+  </div>
+  <div class="cal-weekdays"><span>日</span><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span></div>
+  <div id="calGrid" class="cal-grid"></div>
+</section>
+
+<section id="view-day" class="view" hidden>
+  <header class="topbar">
+    <button class="topbar-btn" data-go="calendar" type="button">‹ 月曆</button>
+    <h1 id="dayTitle" class="topbar-title"></h1>
+    <button class="topbar-btn" data-go="settings" type="button">設定</button>
+  </header>
+  <div id="dayStrip" class="day-strip"></div>
+  <div id="dayBody" class="day-body"></div>
+</section>
+
+<section id="view-check" class="view" hidden>
+  <header class="topbar">
+    <button class="topbar-btn" data-go="back-day" type="button">‹ 返回</button>
+    <h1 id="checkTitle" class="topbar-title"></h1>
+    <button class="topbar-btn" data-go="settings" type="button">設定</button>
+  </header>
+  <div id="checkBody" class="check-body"></div>
+  <footer class="check-footer">
+    <button id="checkDone" class="btn btn-primary btn-block" type="button">完成</button>
+  </footer>
+</section>
+
+<section id="view-settings" class="view" hidden>
+  <header class="topbar">
+    <button class="topbar-btn" data-go="back-from-settings" type="button">‹ 返回</button>
+    <h1 class="topbar-title">設定</h1>
+    <button class="topbar-btn" data-go="logout" type="button">登出</button>
+  </header>
+  <div id="settingsBody" class="settings-body"></div>
+</section>
+
+<script src="toggle-pw.js"></script>
+<script type="module" src="app.js"></script>
+</body>
+</html>
