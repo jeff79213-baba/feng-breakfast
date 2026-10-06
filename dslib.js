@@ -93,6 +93,7 @@ export function emptyDay(date) {
     prep: {
       rice: { extra: 0 }, porridge: { extra: 0 }, egg: { extra: 0 },
       custom: [],
+      done: { rice: false, porridge: false, egg: false },
     },
     drinks: {},
     updatedAt: null, updatedBy: null,
@@ -116,7 +117,10 @@ export async function loadDay(date) {
   return {
     ...base, ...data,
     head: { b1: { ...emptyHead(), ...(data.head && data.head.b1) }, b2: { ...emptyHead(), ...(data.head && data.head.b2) } },
-    prep: { ...base.prep, ...(data.prep || {}) },
+    prep: {
+      ...base.prep, ...(data.prep || {}),
+      done: { ...base.prep.done, ...((data.prep && data.prep.done) || {}) },
+    },
     drinks: data.drinks || {},
   };
 }
