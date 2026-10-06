@@ -1,7 +1,8 @@
 import { stripCells } from '../cal.js';
 import {
-  todayKey, suggestDishes, suggestFruitDessert, peopleSum, peopleFor,
+  todayKey, suggestDishes, suggestFruitDessert, peopleSum, peopleFor, summaryLine,
 } from '../core.js';
+import { CATEGORIES } from '../menu-lib.js';
 import { loadDay, saveDay, loadConfig, Debouncer } from '../dslib.js';
 import { go, ctx } from '../app.js';
 import { el } from './dom.js';
@@ -118,6 +119,49 @@ function refreshSuggest() {
   sug.textContent =
     `菜色 肉${d.meat} 菜${d.veg} 蛋${d.egg} 小菜${d.side} 炸物${d.fry} 滷菜${d.braise}`
     + `｜水果${fd.fruit} 甜點${fd.dessert}（僅供參考）`;
+
+  for (const cat of CATEGORIES) {
+    const node = $('dayBody').querySelector(`[data-open-dish="${cat.key}"] .dish-count`);
+    if (node) {
+      const n = (state.day.dishes[ctx.target][cat.key] || []).length;
+      node.textContent = n ? `${n} 項　編輯 ›` : '選擇 ›';
+    }
+  }
+}
+
+function dishCardFor(cat) {
+  const card = el('section', 'card');
+  const title = el('h2', 'card-title', `${cat.label}（${(state.day.dishes[ctx.target][cat.key] || []).length}）`);
+  title.dataset.openDish = cat.key;
+  card.appendChild(title);
+
+  const chosen = state.day.dishes[ctx.target][cat.key] || [];
+  const line = el('div', 'dish-line');
+  line.dataset.openDish = cat.key;
+  line.appendChild(el('span', 'dish-cat', cat.label)).style.background = cat.color;
+  line.appendChild(el('span', 'dish-text', summaryLine(chosen)));
+  line.appendChild(el('span', 'dish-count', chosen.length ? '編輯 ›' : '選擇 ›'));
+  card.appendChild(line);
+  return card;
+}
+
+function renderDishCard() {
+  const wrap = el('div');
+  for (const cat of CATEGORIES) wrap.appendChild(dishCardFor(cat));
+  return wrap;
+}
+
+function renderExtraCard() {
+  const card = el('section', 'card');
+  const chosen = state.day.extra[ctx.target] || [];
+  card.appendChild(el('h2', 'card-title', `多備菜色（${chosen.length}）`));
+  const line = el('div', 'dish-line');
+  line.dataset.openExtra = '1';
+  line.appendChild(el('span', 'dish-cat', '多備'));
+  line.appendChild(el('span', 'dish-text', summaryLine(chosen)));
+  line.appendChild(el('span', 'dish-count', '編輯 ›'));
+  card.appendChild(line);
+  return card;
 }
 
 export async function renderDay(date) {
@@ -143,7 +187,8 @@ export async function renderDay(date) {
   sugCard.append(meta, sug);
   body.appendChild(sugCard);
 
-  body.appendChild(el('div', 'card', '（菜色區塊由 Task 16 組裝）'));
+  body.appendChild(renderDishCard());
+  body.appendChild(renderExtraCard());
 
   refreshHead();
   refreshSuggest();
@@ -167,6 +212,13 @@ export function mountDay() {
     refreshHead();
     refreshSuggest();
     headSaver.call({ date: state.date, head: state.day.head });
+  });
+
+  $('dayBody').addEventListener('click', e => {
+    const dish = e.target.closest('[data-open-dish]');
+    if (dish) return go('check', { kind: 'dish', catKey: dish.dataset.openDish });
+    const extra = e.target.closest('[data-open-extra]');
+    if (extra) return go('check', { kind: 'extra' });
   });
 
   $('dayBody').addEventListener('click', e => {
