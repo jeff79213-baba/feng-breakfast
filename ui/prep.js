@@ -1,4 +1,4 @@
-import { prepBase, prepLine } from '../core.js';
+import { prepBase, prepLine, drinkTotals } from '../core.js';
 import { saveDay } from '../dslib.js';
 import { state } from './day.js';
 import { el } from './dom.js';
@@ -171,10 +171,13 @@ export function mountPrep() {
     if (!body || $('prepCard')) return;
     const anchor = $('suggestLine');
     const card = renderPrepCard();
+    const drinks = renderDrinkCard();
     if (anchor && anchor.parentNode) {
       anchor.parentNode.after(card);
+      card.after(drinks);
     } else {
       body.appendChild(card);
+      body.appendChild(drinks);
     }
   });
 
@@ -184,4 +187,79 @@ export function mountPrep() {
     const title = $('prepTitle');
     if (title) title.textContent = `備料區（依${targetName()}計算）`;
   });
+}
+
+export function renderDrinkCard() {
+  const card = el('section', 'card');
+  card.id = 'drinkCard';
+  card.appendChild(el('h2', 'card-title', '牛奶飲料補貨'));
+
+  const totals = drinkTotals(state.cfg.slots, {}, state.day);
+
+  for (const row of totals.rows) {
+    const line = el('div', 'prep-row');
+    const done = el('input');
+    done.type = 'checkbox';
+    done.checked = row.done;
+    done.setAttribute('aria-label', row.label + ' 已補貨');
+    done.addEventListener('change', async () => {
+      const cur = state.day.drinks[row.id] || {};
+      state.day.drinks[row.id] = { ...cur, done: done.checked };
+      await saveDay(state.day.date, { drinks: state.day.drinks });
+      refreshDrinkTotals();
+    });
+    line.appendChild(done);
+
+    line.appendChild(el('span', 'prep-name', row.label));
+
+    const milk = el('input', 'qty');
+    milk.type = 'number';
+    milk.inputMode = 'numeric';
+    milk.min = '0';
+    milk.value = String(row.milk);
+    milk.setAttribute('aria-label', row.label + ' 牛奶數量');
+    milk.addEventListener('change', async () => {
+      const cur = state.day.drinks[row.id] || {};
+      state.day.drinks[row.id] = { ...cur, milk: Math.max(0, Number(milk.value) || 0) };
+      await saveDay(state.day.date, { drinks: state.day.drinks });
+      refreshDrinkTotals();
+    });
+    line.appendChild(el('span', 'prep-eq', '牛奶'));
+    line.appendChild(milk);
+
+    const foil = el('input', 'qty');
+    foil.type = 'number';
+    foil.inputMode = 'numeric';
+    foil.min = '0';
+    foil.value = String(row.foil);
+    foil.setAttribute('aria-label', row.label + ' 鋁箔包數量');
+    foil.addEventListener('change', async () => {
+      const cur = state.day.drinks[row.id] || {};
+      state.day.drinks[row.id] = { ...cur, foil: Math.max(0, Number(foil.value) || 0) };
+      await saveDay(state.day.date, { drinks: state.day.drinks });
+      refreshDrinkTotals();
+    });
+    line.appendChild(el('span', 'prep-eq', '鋁箔包'));
+    line.appendChild(foil);
+
+    card.appendChild(line);
+  }
+
+  const sum = el('div', 'head-total');
+  sum.id = 'drinkTotal';
+  sum.textContent = drinkTotalText(totals);
+  card.appendChild(sum);
+  return card;
+}
+
+function drinkTotalText(t) {
+  return t.pendingMilk === 0 && t.pendingFoil === 0
+    ? `合計 牛奶×${t.milk} 鋁箔包×${t.foil}（全部已完成）`
+    : `合計 牛奶×${t.milk} 鋁箔包×${t.foil}｜待補 牛奶×${t.pendingMilk} 鋁箔包×${t.pendingFoil}`;
+}
+
+function refreshDrinkTotals() {
+  const node = $('drinkTotal');
+  if (!node) return;
+  node.textContent = drinkTotalText(drinkTotals(state.cfg.slots, {}, state.day));
 }
