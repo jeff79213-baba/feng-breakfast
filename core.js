@@ -236,7 +236,30 @@ export function buildCsv(rows) {
   return `\uFEFF${body}`;
 }
 
-export function emailOf(account) {
-  const a = String(account == null ? '' : account).trim().toLowerCase();
-  return `${a}@fzbf.app`;
+export const ROLES = ['admin', 'editor'];
+
+export function normalizeEmail(raw) {
+  return String(raw == null ? '' : raw).trim().toLowerCase();
+}
+
+export function isValidEmail(value) {
+  const v = String(value == null ? '' : value);
+  return v.length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+}
+
+export function isValidRole(role) {
+  return ROLES.includes(role);
+}
+
+export function roleLabel(role) {
+  if (role === 'admin') return '主帳號';
+  if (role === 'editor') return '員工';
+  return '未知';
+}
+
+export function memberOf(email, data) {
+  const e = normalizeEmail(email);
+  const role = data && data.role;
+  if (!isValidEmail(e) || !isValidRole(role)) return null;
+  return { email: e, role };
 }

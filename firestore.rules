@@ -2,43 +2,58 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    function acct() {
-      return get(/databases/$(database)/documents/fz_accounts/$(request.auth.uid));
-    }
-    function active() {
-      return request.auth != null
-          && exists(/databases/$(database)/documents/fz_accounts/$(request.auth.uid))
-          && acct().data.disabled == false;
-    }
-    function isOwner() {
-      return active() && acct().data.role == 'owner';
+    function signedIn() {
+      return request.auth != null && request.auth.token.email_verified == true;
     }
 
-    match /fz_accounts/{uid} {
-      allow read:  if active() && (request.auth.uid == uid || isOwner());
-      allow write: if false;
+    function myEmail() {
+      return signedIn() ? request.auth.token.email.lower() : '';
     }
-    match /fz_login_attempts/{a} {
-      allow read, write: if false;
+
+    function hasMemberDoc() {
+      return signedIn() ? exists(/databases/$(database)/documents/users/$(myEmail())) : false;
+    }
+
+    function memberRole() {
+      return hasMemberDoc() ? get(/databases/$(database)/documents/users/$(myEmail())).data.role : null;
+    }
+
+    function isMember() {
+      return memberRole() in ['admin', 'editor'];
+    }
+
+    function isAdmin() {
+      return memberRole() == 'admin';
+    }
+
+    match /users/{memberEmail} {
+      allow read: if isAdmin() || (signedIn() && memberEmail.lower() == myEmail());
+      allow create, update: if isAdmin()
+        && request.resource.data.keys().hasOnly(['role', 'addedAt', 'addedBy'])
+        && request.resource.data.role in ['admin', 'editor']
+        && (memberEmail.lower() != myEmail() || request.resource.data.role == 'admin');
+      allow delete: if isAdmin() && memberEmail.lower() != myEmail();
     }
 
     match /fz_days/{date} {
-      allow read, write: if active();
+      allow read, write: if isMember();
     }
 
     match /fz_pantry/{doc} {
-      allow read, write: if active();
+      allow read, write: if isMember();
     }
 
     match /fz_config/app {
-      allow read:   if active();
-      allow create: if isOwner();
-      allow update: if isOwner()
+      allow read: if isMember();
+      allow create: if isAdmin();
+      allow update: if isAdmin()
         || request.resource.data.diff(resource.data).affectedKeys()
              .hasOnly(['dishLib', 'updatedAt', 'updatedBy']);
       allow delete: if false;
     }
 
-    match /{document=**} { allow read, write: if false; }
+    match /{document=**} {
+      allow read, write: if false;
+    }
   }
 }

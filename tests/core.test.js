@@ -5,7 +5,8 @@ import {
   BRACKETS, bracketOf, suggestDishes, suggestFruitDessert,
   peopleSum, peopleFor, emptyHead,
   DEFAULT_PREP, DEFAULT_SLOTS, DEFAULT_PANTRY,
-  prepBase, prepLine, drinkTotals, pantrySplit, summaryLine, emailOf,
+  prepBase, prepLine, drinkTotals, pantrySplit, summaryLine,
+  ROLES, normalizeEmail, isValidEmail, isValidRole, roleLabel, memberOf,
   csvEscape, buildCsv,
 } from '../core.js';
 
@@ -258,11 +259,47 @@ test('summaryLine 組出勾選摘要文字', () => {
   assert.equal(summaryLine([]), '（未選）');
 });
 
-test('emailOf 把帳號補成 fzbf.app 網域', () => {
-  assert.equal(emailOf('wind'), 'wind@fzbf.app');
-  assert.equal(emailOf(' Wind '), 'wind@fzbf.app');
-  assert.equal(emailOf(''), '@fzbf.app');
-  assert.equal(emailOf(null), '@fzbf.app');
+test('normalizeEmail 去除空白並轉小寫', () => {
+  assert.equal(normalizeEmail('  Wind@Gmail.COM '), 'wind@gmail.com');
+  assert.equal(normalizeEmail(''), '');
+  assert.equal(normalizeEmail(null), '');
+  assert.equal(normalizeEmail(undefined), '');
+});
+
+test('isValidEmail 只接受有網域的完整信箱', () => {
+  assert.equal(isValidEmail('wind@gmail.com'), true);
+  assert.equal(isValidEmail('a.b+c@sub.domain.tw'), true);
+  assert.equal(isValidEmail('a@b'), false);
+  assert.equal(isValidEmail('a b@c.com'), false);
+  assert.equal(isValidEmail('@c.com'), false);
+  assert.equal(isValidEmail(''), false);
+  assert.equal(isValidEmail(null), false);
+  assert.equal(isValidEmail('a@' + 'b'.repeat(250) + '.com'), false);
+});
+
+test('isValidRole 只認 admin 與 editor', () => {
+  assert.deepEqual(ROLES, ['admin', 'editor']);
+  assert.equal(isValidRole('admin'), true);
+  assert.equal(isValidRole('editor'), true);
+  assert.equal(isValidRole('owner'), false);
+  assert.equal(isValidRole('staff'), false);
+  assert.equal(isValidRole(null), false);
+});
+
+test('memberOf 驗證白名單文件後給出正規化結果', () => {
+  assert.deepEqual(memberOf(' A@B.com ', { role: 'admin' }), { email: 'a@b.com', role: 'admin' });
+  assert.deepEqual(memberOf('c@d.com', { role: 'editor' }), { email: 'c@d.com', role: 'editor' });
+  assert.equal(memberOf('e@f.com', { role: 'owner' }), null);
+  assert.equal(memberOf('e@f.com', {}), null);
+  assert.equal(memberOf('broken', { role: 'admin' }), null);
+  assert.equal(memberOf('g@h.com', null), null);
+});
+
+test('roleLabel 對應畫面文字', () => {
+  assert.equal(roleLabel('admin'), '主帳號');
+  assert.equal(roleLabel('editor'), '員工');
+  assert.equal(roleLabel('owner'), '未知');
+  assert.equal(roleLabel(null), '未知');
 });
 
 test('csvEscape 處理逗號、引號、換行與 null', () => {

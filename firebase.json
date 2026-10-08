@@ -6,7 +6,6 @@
       "firebase.json",
       "**/.*",
       "**/node_modules/**",
-      "functions/**",
       "tools/**",
       "tests/**",
       "docs/**",
@@ -18,7 +17,6 @@
       "*.md",
       "網址.txt"
     ],
-    "rewrites": [{ "source": "/api/**", "function": "fzapi" }],
     "headers": [
       {
         "source": "/sw.js",
@@ -28,6 +26,5 @@
   },
   "firestore": {
     "rules": "firestore.rules"
-  },
-  "functions": [{ "source": "functions" }]
+  }
 }

@@ -93,30 +93,19 @@ body { padding-bottom: env(safe-area-inset-bottom); }
 }
 .login-title { margin: 0 0 4px; font-size: 21px; }
 .login-sub { margin: 0 0 20px; color: var(--ink-soft); font-size: 14px; }
-.field { display: block; margin-bottom: 14px; }
-.field-label { display: block; margin-bottom: 4px; font-size: 14px; color: var(--ink-soft); }
-.field input, .field select {
-  width: 100%;
-  min-height: var(--tap);
-  padding: 0 12px;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  font: inherit;
+.btn-google {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 14px;
+  border-color: var(--line);
   background: #fff;
+  color: var(--ink);
+  font-weight: 700;
 }
-.pw-wrap { position: relative; display: flex; align-items: center; }
-.pw-wrap input { padding-right: 44px; }
-.pw-toggle {
-  position: absolute;
-  right: 4px;
-  display: grid;
-  place-items: center;
-  width: 36px;
-  height: 36px;
-  border: 0;
-  background: transparent;
-  cursor: pointer;
-}
+.btn-google:active { background: #f1efea; }
+.btn-google:disabled { opacity: .6; }
 .hint { margin: 0 0 12px; color: var(--ink-soft); font-size: 13px; }
 .error { margin: 0 0 12px; color: var(--danger); font-size: 14px; }
 .error[hidden] { display: none; }

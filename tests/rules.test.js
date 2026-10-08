@@ -3,7 +3,7 @@ import {
   initializeTestEnvironment, assertFails, assertSucceeds,
 } from '@firebase/rules-unit-testing';
 import { readFileSync } from 'node:fs';
-import { doc, deleteDoc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
+import { doc, deleteDoc, getDoc, getDocs, collection, setDoc, updateDoc } from 'firebase/firestore';
 
 let env;
 
@@ -19,16 +19,18 @@ beforeAll(async () => {
 
 afterAll(async () => { if (env) await env.cleanup(); });
 
-const asUser = (uid) => env.authenticatedContext(uid).firestore();
+const asUser = (email, extra = {}) => env.authenticatedContext(
+  email.replace(/[^a-z0-9]/gi, '_'),
+  { email, email_verified: true, ...extra },
+).firestore();
+
 const asAnon = () => env.unauthenticatedContext().firestore();
 
-const seedAccount = async (uid, data) => {
-  await env.withSecurityRulesDisabled(async ctx => {
-    await setDoc(doc(ctx.firestore(), 'fz_accounts', uid), {
-      account: uid, role: 'staff', disabled: false, ...data,
-    });
+const seedMember = (email, role) => env.withSecurityRulesDisabled(async ctx => {
+  await setDoc(doc(ctx.firestore(), 'users', email), {
+    role, addedAt: null, addedBy: 'seed',
   });
-};
+});
 
 const seedConfigApp = () => env.withSecurityRulesDisabled(async ctx => {
   await setDoc(doc(ctx.firestore(), 'fz_config', 'app'), {
@@ -46,127 +48,139 @@ test('匿名完全不能讀寫每日資料', async () => {
   await assertFails(setDoc(doc(db, 'fz_days', '2026-10-04'), { b1: {} }));
 });
 
-test('未註冊的登入者（無 fz_accounts 文件）不能讀每日資料', async () => {
-  const db = asUser('ghost');
+test('未驗證 email 的登入者不能讀每日資料', async () => {
+  await seedMember('unverified@fz.app', 'editor');
+  const db = env.authenticatedContext('unverified', {
+    email: 'unverified@fz.app', email_verified: false,
+  }).firestore();
   await assertFails(getDoc(doc(db, 'fz_days', '2026-10-04')));
 });
 
-test('停用帳號不能讀每日資料', async () => {
-  await seedAccount('off', { disabled: true });
-  const db = asUser('off');
+test('不在名單內的登入者不能讀寫每日資料', async () => {
+  const db = asUser('ghost@gmail.com');
   await assertFails(getDoc(doc(db, 'fz_days', '2026-10-04')));
+  await assertFails(setDoc(doc(db, 'fz_days', '2026-10-04'), { b1: {} }));
 });
 
-test('fz_accounts 缺少 disabled 欄位時一律拒絕', async () => {
-  await env.withSecurityRulesDisabled(async ctx => {
-    await setDoc(doc(ctx.firestore(), 'fz_accounts', 'nod'), {
-      account: 'nod', role: 'owner',
-    });
-  });
-  const db = asUser('nod');
-  await assertFails(getDoc(doc(db, 'fz_accounts', 'nod')));
-  await assertFails(getDoc(doc(db, 'fz_days', '2026-10-04')));
-  await assertFails(getDoc(doc(db, 'fz_pantry', '2026-10-04')));
-  await assertFails(updateDoc(doc(db, 'fz_config', 'app'), { prep: { riceAdult: 0.5 } }));
-});
-
-test('active 員工可讀寫自己的館別資料', async () => {
-  await seedAccount('staff1', { role: 'staff' });
-  const db = asUser('staff1');
+test('員工可讀寫每日資料與冰箱', async () => {
+  await seedMember('staff@gmail.com', 'editor');
+  const db = asUser('staff@gmail.com');
   await assertSucceeds(setDoc(doc(db, 'fz_days', '2026-10-04'), {
     b1: { rooms: 10, adult: 20, child: 5, infant: 2, dishes: {}, extra: {} },
   }));
   await assertSucceeds(getDoc(doc(db, 'fz_days', '2026-10-04')));
-});
-
-test('匿名不能讀寫 fz_pantry', async () => {
-  const db = asAnon();
-  await assertFails(getDoc(doc(db, 'fz_pantry', '2026-10-04')));
-  await assertFails(setDoc(doc(db, 'fz_pantry', '2026-10-04'), { items: [] }));
-});
-
-test('active 員工可讀寫 fz_pantry', async () => {
-  await seedAccount('staff1', { role: 'staff' });
-  const db = asUser('staff1');
-  await assertSucceeds(setDoc(doc(db, 'fz_pantry', '2026-10-04'), {
+  await assertSucceeds(setDoc(doc(db, 'fz_pantry', 'pantry'), {
     items: [{ name: '雞蛋', qty: 60 }],
   }));
-  await assertSucceeds(getDoc(doc(db, 'fz_pantry', '2026-10-04')));
 });
 
-test('停用帳號不能讀寫 fz_pantry', async () => {
-  await seedAccount('off2', { disabled: true });
-  const db = asUser('off2');
-  await assertFails(getDoc(doc(db, 'fz_pantry', '2026-10-04')));
-  await assertFails(setDoc(doc(db, 'fz_pantry', '2026-10-04'), { items: [] }));
+test('名單文件角色不合法時一律拒絕', async () => {
+  await seedMember('weird@gmail.com', 'owner');
+  const db = asUser('weird@gmail.com');
+  await assertFails(getDoc(doc(db, 'fz_days', '2026-10-04')));
+  await assertFails(getDoc(doc(db, 'fz_pantry', 'pantry')));
+  await assertFails(updateDoc(doc(db, 'fz_config', 'app'), { prep: { riceAdult: 0.5 } }));
 });
 
-test('員工不能寫入 fz_accounts', async () => {
-  await seedAccount('staff1', { role: 'staff' });
-  const db = asUser('staff1');
-  await assertFails(setDoc(doc(db, 'fz_accounts', 'hacker'), { role: 'owner' }));
+test('大小寫不同的 email 也算同一人', async () => {
+  await seedMember('mixed@gmail.com', 'editor');
+  const db = asUser('Mixed@Gmail.com');
+  await assertSucceeds(getDoc(doc(db, 'fz_days', '2026-10-04')));
 });
 
-test('員工不能讀別人的 fz_accounts，但可讀自己的', async () => {
-  await seedAccount('staff1', { role: 'staff' });
-  await seedAccount('staff2', { role: 'staff' });
-  const db = asUser('staff1');
-  await assertSucceeds(getDoc(doc(db, 'fz_accounts', 'staff1')));
-  await assertFails(getDoc(doc(db, 'fz_accounts', 'staff2')));
+test('員工可讀寫自己的名單文件，不能讀別人的', async () => {
+  await seedMember('staff@gmail.com', 'editor');
+  await seedMember('other@gmail.com', 'editor');
+  const db = asUser('staff@gmail.com');
+  await assertSucceeds(getDoc(doc(db, 'users', 'staff@gmail.com')));
+  await assertFails(getDoc(doc(db, 'users', 'other@gmail.com')));
 });
 
-test('匿名不能讀寫 fz_login_attempts', async () => {
-  const db = asAnon();
-  await assertFails(getDoc(doc(db, 'fz_login_attempts', '2026-10-04')));
-  await assertFails(setDoc(doc(db, 'fz_login_attempts', '2026-10-04'), { count: 3 }));
-});
-
-test('owner 也不能讀寫 fz_login_attempts', async () => {
-  await seedAccount('boss', { role: 'owner' });
-  const db = asUser('boss');
-  await assertFails(getDoc(doc(db, 'fz_login_attempts', '2026-10-04')));
-  await assertFails(setDoc(doc(db, 'fz_login_attempts', '2026-10-04'), { count: 3 }));
-});
-
-test('員工不可改備料係數，但可加菜色庫', async () => {
-  await seedAccount('staff1', { role: 'staff' });
-  const db = asUser('staff1');
-  await assertSucceeds(updateDoc(doc(db, 'fz_config', 'app'), {
-    dishLib: { meat: ['滷豬耳', '控肉'] }, updatedBy: 'staff1',
+test('員工不能新增或刪除名單文件', async () => {
+  await seedMember('staff@gmail.com', 'editor');
+  const db = asUser('staff@gmail.com');
+  await assertFails(setDoc(doc(db, 'users', 'newbie@gmail.com'), {
+    role: 'editor', addedAt: null, addedBy: 'staff@gmail.com',
   }));
-  await assertFails(updateDoc(doc(db, 'fz_config', 'app'), { prep: { riceAdult: 0.9 } }));
+  await assertFails(deleteDoc(doc(db, 'users', 'staff@gmail.com')));
 });
 
-test('員工不可建立 fz_config/app', async () => {
+test('員工不能建立 fz_config/app，也不能改備料係數', async () => {
   await removeConfigApp();
-  await seedAccount('staff1', { role: 'staff' });
-  const db = asUser('staff1');
+  await seedMember('staff@gmail.com', 'editor');
+  const db = asUser('staff@gmail.com');
   await assertFails(setDoc(doc(db, 'fz_config', 'app'), {
     dishLib: { meat: ['滷豬耳'] }, prep: { riceAdult: 0.3 }, updatedAt: null,
   }));
   await seedConfigApp();
+  await assertFails(updateDoc(doc(db, 'fz_config', 'app'), { prep: { riceAdult: 0.9 } }));
 });
 
-test('owner 可改備料係數', async () => {
-  await seedAccount('boss', { role: 'owner' });
-  const db = asUser('boss');
+test('員工可新增菜色庫', async () => {
+  await seedMember('staff@gmail.com', 'editor');
+  const db = asUser('staff@gmail.com');
   await assertSucceeds(updateDoc(doc(db, 'fz_config', 'app'), {
-    prep: { riceAdult: 0.25 }, updatedBy: 'boss',
+    dishLib: { meat: ['滷豬耳', '控肉'] }, updatedBy: 'staff@gmail.com',
   }));
 });
 
-test('owner 可讀所有 fz_accounts', async () => {
-  await seedAccount('boss', { role: 'owner' });
-  await seedAccount('staff2', { role: 'staff' });
-  const db = asUser('boss');
-  await assertSucceeds(getDoc(doc(db, 'fz_accounts', 'staff2')));
+test('主帳號可列出全部名單並新增、改角色、刪除', async () => {
+  await seedMember('boss@gmail.com', 'admin');
+  await seedMember('staff@gmail.com', 'editor');
+  const db = asUser('boss@gmail.com');
+  await assertSucceeds(getDoc(doc(db, 'users', 'staff@gmail.com')));
+  await assertSucceeds(getDocs(collection(db, 'users')));
+  await assertSucceeds(setDoc(doc(db, 'users', 'newbie@gmail.com'), {
+    role: 'editor', addedAt: null, addedBy: 'boss@gmail.com',
+  }));
+  await assertSucceeds(updateDoc(doc(db, 'users', 'newbie@gmail.com'), {
+    role: 'admin', addedBy: 'boss@gmail.com',
+  }));
+  await assertSucceeds(deleteDoc(doc(db, 'users', 'newbie@gmail.com')));
+});
+
+test('主帳號不能刪除或降級自己', async () => {
+  await seedMember('boss@gmail.com', 'admin');
+  const db = asUser('boss@gmail.com');
+  await assertFails(deleteDoc(doc(db, 'users', 'boss@gmail.com')));
+  await assertFails(updateDoc(doc(db, 'users', 'boss@gmail.com'), {
+    role: 'editor', addedBy: 'boss@gmail.com',
+  }));
+});
+
+test('名單文件夾帶不允許的欄位時拒絕', async () => {
+  await seedMember('boss@gmail.com', 'admin');
+  const db = asUser('boss@gmail.com');
+  await assertFails(setDoc(doc(db, 'users', 'evil@gmail.com'), {
+    role: 'admin', addedAt: null, addedBy: 'boss@gmail.com', note: 'sneaky',
+  }));
+  await assertFails(setDoc(doc(db, 'users', 'evil@gmail.com'), {
+    role: 'superuser', addedAt: null, addedBy: 'boss@gmail.com',
+  }));
+});
+
+test('主帳號可改備料係數', async () => {
+  await seedMember('boss@gmail.com', 'admin');
+  const db = asUser('boss@gmail.com');
+  await assertSucceeds(updateDoc(doc(db, 'fz_config', 'app'), {
+    prep: { riceAdult: 0.25 }, updatedBy: 'boss@gmail.com',
+  }));
+});
+
+test('匿名不能讀寫名單', async () => {
+  const db = asAnon();
+  await assertFails(getDoc(doc(db, 'users', 'boss@gmail.com')));
+  await assertFails(setDoc(doc(db, 'users', 'boss@gmail.com'), {
+    role: 'admin', addedAt: null, addedBy: 'x',
+  }));
 });
 
 test('未定義路徑一律被拒絕', async () => {
-  await seedAccount('boss', { role: 'owner' });
-  const db = asUser('boss');
+  await seedMember('boss@gmail.com', 'admin');
+  const db = asUser('boss@gmail.com');
   await assertFails(getDoc(doc(db, 'fz_unknown', 'x')));
   await assertFails(setDoc(doc(db, 'fz_unknown', 'x'), { a: 1 }));
+  await assertFails(getDoc(doc(db, 'fz_accounts', 'someone')));
   const anon = asAnon();
   await assertFails(getDoc(doc(anon, 'fz_unknown', 'x')));
   await assertFails(setDoc(doc(anon, 'fz_unknown', 'x'), { a: 1 }));

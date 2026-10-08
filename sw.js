@@ -1,4 +1,4 @@
-const CACHE = 'fz-shell-v1';
+const CACHE = 'fz-shell-v2';
 const SHELL = [
   './',
   './index.html',
@@ -8,9 +8,8 @@ const SHELL = [
   './cal.js',
   './dslib.js',
   './menu-lib.js',
-  './toggle-pw.js',
   './manifest.webmanifest',
-  './ui/login.js',
+  './ui/auth.js',
   './ui/calendar.js',
   './ui/day.js',
   './ui/check.js',

@@ -1,8 +1,8 @@
 import { CATEGORIES } from '../menu-lib.js';
-import { loadConfig, saveConfig, apiFetch } from '../dslib.js';
+import { roleLabel } from '../core.js';
+import { loadConfig, saveConfig, listMembers, addMember, setMemberRole, removeMember } from '../dslib.js';
 import { go, ctx, toast } from '../app.js';
 import { el } from './dom.js';
-import { changePassword } from './login.js';
 
 const $ = id => document.getElementById(id);
 
@@ -33,7 +33,7 @@ function prepCard() {
   const p = cfg.prep;
   const save = async patch => {
     Object.assign(cfg.prep, patch);
-    await saveConfig({ prep: cfg.prep, updatedBy: ctx.session && ctx.session.account });
+    await saveConfig({ prep: cfg.prep, updatedBy: (ctx.session && ctx.session.email) || null });
     toast('已儲存');
   };
   c.appendChild(numberRow('飯／大人', p.riceAdult, '0.01', v => save({ riceAdult: v })));
@@ -50,7 +50,7 @@ function prepCard() {
 function slotCard() {
   const c = card('用餐時段');
   const save = async () => {
-    await saveConfig({ slots: cfg.slots, updatedBy: ctx.session && ctx.session.account });
+    await saveConfig({ slots: cfg.slots, updatedBy: (ctx.session && ctx.session.email) || null });
   };
 
   for (const slot of cfg.slots) {
@@ -143,7 +143,7 @@ function slotCard() {
 function dishLibCard() {
   const c = card('菜色庫管理（八個分類）');
   const save = async () => {
-    await saveConfig({ dishLib: cfg.dishLib, updatedBy: ctx.session && ctx.session.account });
+    await saveConfig({ dishLib: cfg.dishLib, updatedBy: (ctx.session && ctx.session.email) || null });
   };
   const sel = el('select');
   sel.setAttribute('aria-label', '選擇分類');
@@ -226,59 +226,48 @@ function dishLibCard() {
   return c;
 }
 
-function accountCard() {
-  const c = card('帳號管理');
+function memberCard() {
+  const c = card('人員管理');
+  c.appendChild(el('p', 'hint', '把員工的 Google Email 加入名單就能登入，離職時刪除那一列即可。'));
   const list = el('div');
-  list.id = 'accountList';
+  list.id = 'memberList';
 
   const paint = async () => {
     list.textContent = '';
-    const { accounts } = await apiFetch('/api/fz/accounts');
-    for (const a of accounts) {
+    let members = [];
+    try {
+      members = await listMembers();
+    } catch (e) {
+      list.appendChild(el('p', 'error', '載入失敗：' + e.message));
+      return;
+    }
+    const me = (ctx.session && ctx.session.email) || '';
+    for (const m of members) {
       const row = el('div', 'set-row');
-      row.appendChild(el('span', 'label', a.account));
-      row.appendChild(el('span', 'badge' + (a.role === 'owner' ? ' badge-owner' : ''), a.role === 'owner' ? '主帳號' : '員工'));
-      if (a.disabled) row.appendChild(el('span', 'badge badge-off', '已停用'));
-      if (a.mustChangePassword) row.appendChild(el('span', 'badge', '需改密碼'));
+      row.appendChild(el('span', 'label', m.email));
+      row.appendChild(el('span', 'badge' + (m.role === 'admin' ? ' badge-owner' : ''), roleLabel(m.role)));
+      const mine = m.email === me;
+      if (mine) row.appendChild(el('span', 'badge', '你自己'));
 
-      const reset = el('button', 'btn btn-sm', '改密碼');
-      reset.type = 'button';
-      reset.addEventListener('click', async () => {
-        const pw = prompt(`請輸入 ${a.account} 的新密碼（至少 6 碼）`);
-        if (!pw) return;
+      const swap = el('button', 'btn btn-sm', m.role === 'admin' ? '改為員工' : '改為主帳號');
+      swap.type = 'button';
+      swap.disabled = mine;
+      swap.addEventListener('click', async () => {
         try {
-          await apiFetch('/api/fz/accounts/' + a.uid, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ password: pw }),
-          });
-          toast('已更新密碼');
-          paint();
-        } catch (e) { toast(e.message); }
-      });
-      row.appendChild(reset);
-
-      const toggle = el('button', 'btn btn-sm', a.disabled ? '啟用' : '停用');
-      toggle.type = 'button';
-      toggle.addEventListener('click', async () => {
-        try {
-          await apiFetch('/api/fz/accounts/' + a.uid, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ disabled: !a.disabled }),
-          });
+          await setMemberRole(m.email, m.role === 'admin' ? 'editor' : 'admin');
           toast('已更新');
           paint();
         } catch (e) { toast(e.message); }
       });
-      row.appendChild(toggle);
+      row.appendChild(swap);
 
       const del = el('button', 'btn btn-sm btn-danger', '刪除');
       del.type = 'button';
+      del.disabled = mine;
       del.addEventListener('click', async () => {
-        if (!confirm(`確定刪除帳號 ${a.account}？此操作無法復原。`)) return;
+        if (!confirm(`確定刪除 ${m.email}？刪除後這個帳號立刻無法使用。`)) return;
         try {
-          await apiFetch('/api/fz/accounts/' + a.uid, { method: 'DELETE' });
+          await removeMember(m.email);
           toast('已刪除');
           paint();
         } catch (e) { toast(e.message); }
@@ -288,40 +277,23 @@ function accountCard() {
     }
 
     const add = el('div', 'set-row');
-    const account = el('input');
-    account.type = 'text';
-    account.placeholder = '新帳號';
-    account.setAttribute('aria-label', '新帳號');
-    const password = el('input');
-    password.type = 'password';
-    password.id = 'newStaffPassword';
-    password.placeholder = '密碼至少 6 碼';
-    password.style.paddingRight = '40px';
-    password.setAttribute('aria-label', '新帳號密碼');
-    const pwWrap = el('div', 'pw-wrap');
-    pwWrap.style.cssText = 'position:relative;display:flex;align-items:center';
-    pwWrap.appendChild(password);
-    const pwToggle = el('button', 'pw-toggle');
-    pwToggle.type = 'button';
-    pwToggle.setAttribute('aria-label', '顯示或隱藏密碼');
-    pwToggle.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#666" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
-    pwToggle.setAttribute('onclick', "togglePw('newStaffPassword',this)");
-    pwWrap.appendChild(pwToggle);
-    const btn = el('button', 'btn btn-sm btn-primary', '＋建立員工');
+    const email = el('input');
+    email.type = 'email';
+    email.id = 'newMemberEmail';
+    email.placeholder = 'someone@gmail.com';
+    email.style.width = '190px';
+    email.setAttribute('aria-label', '新增人員 Email');
+    const btn = el('button', 'btn btn-sm btn-primary', '＋加入');
     btn.type = 'button';
     btn.addEventListener('click', async () => {
       try {
-        await apiFetch('/api/fz/accounts', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ account: account.value.trim(), password: password.value }),
-        });
-        toast('已建立');
+        await addMember(email.value, 'editor');
+        email.value = '';
+        toast('已加入（預設為員工）');
         paint();
       } catch (e) { toast(e.message); }
     });
-    add.appendChild(account);
-    add.appendChild(pwWrap);
+    add.appendChild(email);
     add.appendChild(btn);
     list.appendChild(add);
   };
@@ -337,43 +309,14 @@ function accountCard() {
   return c;
 }
 
-function passwordCard() {
-  const c = card('變更我的密碼');
-  c.appendChild(el('p', 'hint', '密碼至少 6 碼。'));
-  for (const [key, label] of [['pwCurrent', '舊密碼'], ['pwNew', '新密碼'], ['pwConfirm', '確認新密碼']]) {
-    const row = el('div', 'set-row');
-    row.appendChild(el('span', 'label', label));
-    const wrap2 = el('span', 'pw-wrap');
-    const input = el('input');
-    input.type = 'password';
-    input.id = key;
-    input.style.width = '150px';
-    input.style.paddingRight = '40px';
-    input.setAttribute('aria-label', label);
-    const btn = el('button', 'pw-toggle');
-    btn.type = 'button';
-    btn.setAttribute('aria-label', '顯示或隱藏密碼');
-    btn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#666" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
-    btn.setAttribute('onclick', `togglePw('${key}',this)`);
-    wrap2.appendChild(input);
-    wrap2.appendChild(btn);
-    row.appendChild(wrap2);
-    c.appendChild(row);
-  }
-  const btn = el('button', 'btn btn-primary', '變更密碼');
-  btn.type = 'button';
-  btn.addEventListener('click', async () => {
-    const currentPassword = $('pwCurrent').value;
-    const newPassword = $('pwNew').value;
-    if (newPassword !== $('pwConfirm').value) return toast('兩次新密碼不一致');
-    try {
-      await changePassword(currentPassword, newPassword);
-      $('pwCurrent').value = $('pwNew').value = $('pwConfirm').value = '';
-      toast('密碼已變更，請重新登入');
-      document.dispatchEvent(new CustomEvent('fz:logout'));
-    } catch (e) { toast(e.message); }
-  });
-  c.appendChild(btn);
+function myAccountCard() {
+  const c = card('我的帳號');
+  const row = el('div', 'set-row');
+  row.appendChild(el('span', 'label', (ctx.session && ctx.session.email) || ''));
+  const role = ctx.session && ctx.session.role;
+  row.appendChild(el('span', 'badge' + (role === 'admin' ? ' badge-owner' : ''), roleLabel(role)));
+  c.appendChild(row);
+  c.appendChild(el('p', 'hint', '要用別的帳號登入，請先登出。'));
   return c;
 }
 
@@ -381,16 +324,16 @@ export async function renderSettings() {
   cfg = await loadConfig();
   const body = $('settingsBody');
   body.textContent = '';
-  const isOwner = ctx.session && ctx.session.role === 'owner';
+  const isAdmin = ctx.session && ctx.session.role === 'admin';
 
   body.appendChild(dishLibCard());
-  body.appendChild(passwordCard());
-  if (isOwner) {
+  body.appendChild(myAccountCard());
+  if (isAdmin) {
     body.appendChild(slotCard());
     body.appendChild(prepCard());
-    body.appendChild(accountCard());
+    body.appendChild(memberCard());
   } else {
-    const note = el('p', 'hint', '備料係數、用餐時段與帳號管理僅主帳號可調整。');
+    const note = el('p', 'hint', '備料係數、用餐時段與人員管理僅主帳號可調整。');
     body.appendChild(note);
   }
 

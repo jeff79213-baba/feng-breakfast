@@ -2,14 +2,14 @@ import { todayKey } from './core.js';
 
 export const ctx = {
   session: null,
-  view: 'login',
+  view: 'auth',
   params: {},
   anchor: todayKey(),
   target: 'b1',
   backView: 'calendar',
 };
 
-const VIEWS = ['login', 'calendar', 'day', 'check', 'settings'];
+const VIEWS = ['auth', 'denied', 'calendar', 'day', 'check', 'settings'];
 
 export function go(view, params = {}) {
   if (!VIEWS.includes(view)) throw new Error('unknown view: ' + view);
@@ -49,4 +49,4 @@ document.addEventListener('click', (e) => {
 
 window.FZApp = { ctx, go, toast };
 
-go('login');
+go('auth');

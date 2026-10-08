@@ -1,12 +1,16 @@
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js';
 import {
-  getAuth, onAuthStateChanged, signInWithCustomToken, signOut, getIdToken,
+  getAuth, onAuthStateChanged, getRedirectResult, signInWithPopup, signInWithRedirect,
+  GoogleAuthProvider, signOut,
 } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js';
 import {
-  getFirestore, doc, getDoc, setDoc,
+  getFirestore, doc, getDoc, getDocs, setDoc, deleteDoc, updateDoc, collection, serverTimestamp,
 } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js';
 
-import { DEFAULT_PREP, DEFAULT_SLOTS, DEFAULT_PANTRY } from './core.js';
+import {
+  DEFAULT_PREP, DEFAULT_SLOTS, DEFAULT_PANTRY,
+  normalizeEmail, isValidEmail, isValidRole, memberOf,
+} from './core.js';
 import { DEFAULT_DISH_LIB } from './menu-lib.js';
 
 const FIREBASE_CONFIG = {
@@ -16,6 +20,7 @@ const FIREBASE_CONFIG = {
   appId: '1:741268730945:web:503cf0dfab0e9100b042c0',
 };
 
+const MEMBERS = 'users';
 const DAY_PREFIX = 'fz_days';
 const CONFIG_DOC = 'fz_config/app';
 const PANTRY_DOC = 'fz_pantry/pantry';
@@ -23,26 +28,37 @@ const PANTRY_DOC = 'fz_pantry/pantry';
 let app = null;
 let auth = null;
 let store = null;
+let provider = null;
 let sessionCb = null;
 let currentSession = null;
+
+function myEmail() {
+  return (currentSession && currentSession.email) || '';
+}
+
+async function readSession(user) {
+  if (!user) return null;
+  const email = normalizeEmail(user.email);
+  if (!isValidEmail(email)) return { uid: user.uid, email: '', role: null };
+  const snap = await getDoc(doc(store, MEMBERS, email));
+  const member = snap.exists() ? memberOf(email, snap.data()) : null;
+  return { uid: user.uid, email, role: member ? member.role : null };
+}
 
 export function initFirebase() {
   if (app) return;
   app = initializeApp(FIREBASE_CONFIG);
   auth = getAuth(app);
   store = getFirestore(app);
+  provider = new GoogleAuthProvider();
+  provider.setCustomParameters({ prompt: 'select_account' });
+  getRedirectResult(auth).catch(() => {});
   onAuthStateChanged(auth, async (user) => {
-    if (!user) {
-      currentSession = null;
-      if (sessionCb) sessionCb(null);
-      return;
-    }
     try {
-      const me = await apiFetch('/api/fz/me');
-      currentSession = { uid: user.uid, account: me.account, role: me.role };
+      currentSession = await readSession(user);
     } catch (e) {
-      await signOut(auth);
       currentSession = null;
+      await signOut(auth).catch(() => {});
     }
     if (sessionCb) sessionCb(currentSession);
   });
@@ -51,32 +67,62 @@ export function initFirebase() {
 export function onSession(cb) { sessionCb = cb; }
 export function getSession() { return currentSession; }
 
-export async function apiFetch(path, options = {}) {
-  const headers = Object.assign({}, options.headers);
-  const user = auth && auth.currentUser;
-  if (user) headers.Authorization = 'Bearer ' + await getIdToken(user);
-  const res = await fetch(path, Object.assign({}, options, { headers }));
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    const err = new Error(data.error || ('HTTP ' + res.status));
-    err.status = res.status;
-    throw err;
+export async function signInWithGoogle() {
+  initFirebase();
+  try {
+    await signInWithPopup(auth, provider);
+  } catch (e) {
+    const code = (e && e.code) || '';
+    if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') return;
+    if (code === 'auth/popup-blocked' || code === 'auth/operation-not-supported-in-this-environment') {
+      await signInWithRedirect(auth, provider);
+      return;
+    }
+    throw e;
   }
-  return data;
-}
-
-export async function login(account, password) {
-  const res = await apiFetch('/api/fz/login', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ account, password }),
-  });
-  await signInWithCustomToken(auth, res.customToken);
-  return { uid: res.uid, role: res.role, account: res.account };
 }
 
 export async function logout() {
   await signOut(auth);
+}
+
+export async function listMembers() {
+  const snap = await getDocs(collection(store, MEMBERS));
+  const rows = [];
+  snap.forEach((d) => {
+    const m = memberOf(d.id, d.data());
+    if (m) rows.push(m);
+  });
+  rows.sort((a, b) => {
+    if (a.role !== b.role) return a.role === 'admin' ? -1 : 1;
+    return a.email.localeCompare(b.email);
+  });
+  return rows;
+}
+
+export async function addMember(rawEmail, role) {
+  const email = normalizeEmail(rawEmail);
+  if (!isValidEmail(email)) throw new Error('請輸入完整的 Email');
+  if (!isValidRole(role)) throw new Error('角色不正確');
+  await setDoc(doc(store, MEMBERS, email), {
+    role,
+    addedAt: serverTimestamp(),
+    addedBy: myEmail(),
+  });
+  return email;
+}
+
+export async function setMemberRole(rawEmail, role) {
+  const email = normalizeEmail(rawEmail);
+  if (!isValidRole(role)) throw new Error('角色不正確');
+  await updateDoc(doc(store, MEMBERS, email), { role, addedBy: myEmail() });
+}
+
+export async function removeMember(rawEmail) {
+  const email = normalizeEmail(rawEmail);
+  if (!email) throw new Error('Email 不正確');
+  if (email === myEmail()) throw new Error('不能刪除自己');
+  await deleteDoc(doc(store, MEMBERS, email));
 }
 
 const emptyHead = () => ({ rooms: 0, adult: 0, child: 0, infant: 0 });
