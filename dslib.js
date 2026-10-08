@@ -1,7 +1,7 @@
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js';
 import {
   getAuth, onAuthStateChanged, getRedirectResult, signInWithPopup, signInWithRedirect,
-  GoogleAuthProvider, signOut,
+  signInWithEmailAndPassword, GoogleAuthProvider, signOut,
 } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js';
 import {
   getFirestore, doc, getDoc, getDocs, setDoc, deleteDoc, updateDoc, collection, serverTimestamp,
@@ -9,7 +9,7 @@ import {
 
 import {
   DEFAULT_PREP, DEFAULT_SLOTS, DEFAULT_PANTRY,
-  normalizeEmail, isValidEmail, isValidRole, memberOf,
+  normalizeEmail, isValidEmail, isValidRole, memberOf, accountToEmail,
 } from './core.js';
 import { DEFAULT_DISH_LIB } from './menu-lib.js';
 
@@ -84,6 +84,14 @@ export async function signInWithGoogle() {
 
 export async function logout() {
   await signOut(auth);
+}
+
+export async function signInWithAccount(rawAccount, password) {
+  initFirebase();
+  const email = accountToEmail(rawAccount);
+  if (!email) throw new Error('帳號格式不正確');
+  if (!password) throw new Error('請輸入密碼');
+  await signInWithEmailAndPassword(auth, email, password);
 }
 
 export async function listMembers() {

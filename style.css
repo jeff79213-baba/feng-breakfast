@@ -106,6 +106,44 @@ body { padding-bottom: env(safe-area-inset-bottom); }
 }
 .btn-google:active { background: #f1efea; }
 .btn-google:disabled { opacity: .6; }
+.field { display: block; margin-bottom: 14px; text-align: left; }
+.field-label { display: block; margin-bottom: 4px; font-size: 14px; color: var(--ink-soft); }
+.field input {
+  width: 100%;
+  min-height: var(--tap);
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  font: inherit;
+  background: #fff;
+}
+.pw-wrap { position: relative; display: flex; align-items: center; }
+.pw-wrap input { padding-right: 64px; }
+.pw-toggle {
+  position: absolute;
+  right: 6px;
+  min-height: 36px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink-soft);
+  font-size: 13px;
+  cursor: pointer;
+}
+.divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 16px 0;
+  color: var(--ink-soft);
+  font-size: 13px;
+}
+.divider::before, .divider::after {
+  content: '';
+  flex: 1;
+  border-top: 1px solid var(--line);
+}
 .hint { margin: 0 0 12px; color: var(--ink-soft); font-size: 13px; }
 .error { margin: 0 0 12px; color: var(--danger); font-size: 14px; }
 .error[hidden] { display: none; }

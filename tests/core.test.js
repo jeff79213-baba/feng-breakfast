@@ -7,6 +7,7 @@ import {
   DEFAULT_PREP, DEFAULT_SLOTS, DEFAULT_PANTRY,
   prepBase, prepLine, drinkTotals, pantrySplit, summaryLine,
   ROLES, normalizeEmail, isValidEmail, isValidRole, roleLabel, memberOf,
+  ACCOUNT_DOMAIN, accountToEmail,
   csvEscape, buildCsv,
 } from '../core.js';
 
@@ -332,4 +333,27 @@ test('csvEscape 開頭是公式字元時加單引號前綴擋掉注入', () => {
 test('buildCsv 會轉義含逗號、引號、換行的欄位', () => {
   const csv = buildCsv([['菜色', '備註'], ['說"好吃",很讚', '第一行\n第二行']]);
   assert.equal(csv, '\uFEFF菜色,備註\r\n"說""好吃"",很讚","第一行\n第二行"');
+});
+
+test('accountToEmail 短帳號自動補網域', () => {
+  assert.equal(accountToEmail('wind'), `wind@${ACCOUNT_DOMAIN}`);
+  assert.equal(accountToEmail('  Wind  '), `wind@${ACCOUNT_DOMAIN}`);
+  assert.equal(accountToEmail('staff1'), `staff1@${ACCOUNT_DOMAIN}`);
+  assert.equal(accountToEmail('a.b_c-d'), `a.b_c-d@${ACCOUNT_DOMAIN}`);
+});
+
+test('accountToEmail 已是完整信箱則直接採用', () => {
+  assert.equal(accountToEmail('wind@fzbf.app'), 'wind@fzbf.app');
+  assert.equal(accountToEmail('Boss@Gmail.COM'), 'boss@gmail.com');
+});
+
+test('accountToEmail 擋掉非法輸入與路徑穿越', () => {
+  assert.equal(accountToEmail(''), null);
+  assert.equal(accountToEmail(null), null);
+  assert.equal(accountToEmail('a/b'), null);
+  assert.equal(accountToEmail('../x'), null);
+  assert.equal(accountToEmail('a/b@fzbf.app'), null);
+  assert.equal(accountToEmail('有空白 帳號'), null);
+  assert.equal(accountToEmail('@'), null);
+  assert.equal(accountToEmail('wind@'), null);
 });

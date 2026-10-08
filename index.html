@@ -16,7 +16,20 @@
 <section id="view-auth" class="view" hidden>
   <div class="login-card">
     <h1 class="login-title">風自然早餐生產規劃</h1>
-    <p class="login-sub">請用你的 Google 帳號登入</p>
+    <p class="login-sub">輸入主帳號發給你的帳號與密碼</p>
+    <label class="field">
+      <span class="field-label">帳號</span>
+      <input id="accountInput" type="text" inputmode="latin" autocomplete="username" placeholder="wind">
+    </label>
+    <label class="field">
+      <span class="field-label">密碼</span>
+      <span class="pw-wrap">
+        <input id="passwordInput" type="password" autocomplete="current-password" placeholder="請輸入密碼">
+        <button id="pwToggle" type="button" class="pw-toggle" aria-label="顯示密碼">顯示</button>
+      </span>
+    </label>
+    <button id="accountBtn" class="btn btn-primary btn-block" type="button">登入</button>
+    <div class="divider">或</div>
     <button id="googleBtn" class="btn btn-google btn-block" type="button">
       <svg viewBox="0 0 48 48" width="20" height="20" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9 3.6l6.7-6.7C35.6 2.6 30.2.5 24 .5 14.6.5 6.5 5.9 2.6 13.8l7.8 6.1C12.3 13.7 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-2.8-.4-4.1H24v8.4h12.7c-.3 2.1-1.6 5.2-4.6 7.3l7.6 5.9c4.5-4.2 6.8-10.3 6.8-17.5z"/><path fill="#FBBC05" d="M10.4 28.1c-.5-1.5-.8-3-.8-4.6s.3-3.1.8-4.6l-7.8-6.1C1 16 0 19.9 0 23.5s1 7.5 2.6 10.7l7.8-6.1z"/><path fill="#34A853" d="M24 47c6.5 0 11.9-2.1 15.9-5.8l-7.6-5.9c-2 1.4-4.7 2.4-8.3 2.4-6.3 0-11.7-4.2-13.6-9.9l-7.8 6.1C6.5 42 14.6 47 24 47z"/></svg>
       <span>使用 Google 登入</span>

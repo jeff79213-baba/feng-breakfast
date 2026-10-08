@@ -263,3 +263,19 @@ export function memberOf(email, data) {
   if (!isValidEmail(e) || !isValidRole(role)) return null;
   return { email: e, role };
 }
+
+export const ACCOUNT_DOMAIN = 'fzbf.app';
+
+const SHORT_ACCOUNT_RE = /^[a-z0-9][a-z0-9._-]{0,63}$/;
+
+export function accountToEmail(raw) {
+  const v = normalizeEmail(raw);
+  if (!v) return null;
+  if (v.includes('@')) {
+    if (v.includes('/')) return null;
+    return isValidEmail(v) ? v : null;
+  }
+  if (!SHORT_ACCOUNT_RE.test(v)) return null;
+  const email = `${v}@${ACCOUNT_DOMAIN}`;
+  return isValidEmail(email) ? email : null;
+}
