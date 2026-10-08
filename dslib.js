@@ -20,7 +20,7 @@ const FIREBASE_CONFIG = {
   appId: '1:741268730945:web:503cf0dfab0e9100b042c0',
 };
 
-const MEMBERS = 'users';
+const MEMBERS = 'fz_users';
 const DAY_PREFIX = 'fz_days';
 const CONFIG_DOC = 'fz_config/app';
 const PANTRY_DOC = 'fz_pantry/pantry';

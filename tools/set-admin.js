@@ -26,7 +26,7 @@ function db() {
 }
 
 async function list() {
-  const snap = await db().collection('users').get();
+  const snap = await db().collection('fz_users').get();
   if (snap.empty) {
     console.log('名單是空的。先把自己加進去：node tools/set-admin.js 你的信箱@gmail.com admin');
     return;
@@ -35,7 +35,7 @@ async function list() {
 }
 
 async function set(email, role) {
-  await db().doc(`users/${email}`).set({
+  await db().doc(`fz_users/${email}`).set({
     role,
     addedAt: FieldValue.serverTimestamp(),
     addedBy: 'set-admin',
@@ -44,7 +44,7 @@ async function set(email, role) {
 }
 
 async function remove(email) {
-  await db().doc(`users/${email}`).delete();
+  await db().doc(`fz_users/${email}`).delete();
   console.log(`[完成] 已移除 ${email}`);
 }
 

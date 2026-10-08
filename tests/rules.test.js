@@ -27,7 +27,7 @@ const asUser = (email, extra = {}) => env.authenticatedContext(
 const asAnon = () => env.unauthenticatedContext().firestore();
 
 const seedMember = (email, role) => env.withSecurityRulesDisabled(async ctx => {
-  await setDoc(doc(ctx.firestore(), 'users', email), {
+  await setDoc(doc(ctx.firestore(), 'fz_users', email), {
     role, addedAt: null, addedBy: 'seed',
   });
 });
@@ -92,17 +92,17 @@ test('員工可讀寫自己的名單文件，不能讀別人的', async () => {
   await seedMember('staff@gmail.com', 'editor');
   await seedMember('other@gmail.com', 'editor');
   const db = asUser('staff@gmail.com');
-  await assertSucceeds(getDoc(doc(db, 'users', 'staff@gmail.com')));
-  await assertFails(getDoc(doc(db, 'users', 'other@gmail.com')));
+  await assertSucceeds(getDoc(doc(db, 'fz_users', 'staff@gmail.com')));
+  await assertFails(getDoc(doc(db, 'fz_users', 'other@gmail.com')));
 });
 
 test('員工不能新增或刪除名單文件', async () => {
   await seedMember('staff@gmail.com', 'editor');
   const db = asUser('staff@gmail.com');
-  await assertFails(setDoc(doc(db, 'users', 'newbie@gmail.com'), {
+  await assertFails(setDoc(doc(db, 'fz_users', 'newbie@gmail.com'), {
     role: 'editor', addedAt: null, addedBy: 'staff@gmail.com',
   }));
-  await assertFails(deleteDoc(doc(db, 'users', 'staff@gmail.com')));
+  await assertFails(deleteDoc(doc(db, 'fz_users', 'staff@gmail.com')));
 });
 
 test('員工不能建立 fz_config/app，也不能改備料係數', async () => {
@@ -128,22 +128,22 @@ test('主帳號可列出全部名單並新增、改角色、刪除', async () =>
   await seedMember('boss@gmail.com', 'admin');
   await seedMember('staff@gmail.com', 'editor');
   const db = asUser('boss@gmail.com');
-  await assertSucceeds(getDoc(doc(db, 'users', 'staff@gmail.com')));
-  await assertSucceeds(getDocs(collection(db, 'users')));
-  await assertSucceeds(setDoc(doc(db, 'users', 'newbie@gmail.com'), {
+  await assertSucceeds(getDoc(doc(db, 'fz_users', 'staff@gmail.com')));
+  await assertSucceeds(getDocs(collection(db, 'fz_users')));
+  await assertSucceeds(setDoc(doc(db, 'fz_users', 'newbie@gmail.com'), {
     role: 'editor', addedAt: null, addedBy: 'boss@gmail.com',
   }));
-  await assertSucceeds(updateDoc(doc(db, 'users', 'newbie@gmail.com'), {
+  await assertSucceeds(updateDoc(doc(db, 'fz_users', 'newbie@gmail.com'), {
     role: 'admin', addedBy: 'boss@gmail.com',
   }));
-  await assertSucceeds(deleteDoc(doc(db, 'users', 'newbie@gmail.com')));
+  await assertSucceeds(deleteDoc(doc(db, 'fz_users', 'newbie@gmail.com')));
 });
 
 test('主帳號不能刪除或降級自己', async () => {
   await seedMember('boss@gmail.com', 'admin');
   const db = asUser('boss@gmail.com');
-  await assertFails(deleteDoc(doc(db, 'users', 'boss@gmail.com')));
-  await assertFails(updateDoc(doc(db, 'users', 'boss@gmail.com'), {
+  await assertFails(deleteDoc(doc(db, 'fz_users', 'boss@gmail.com')));
+  await assertFails(updateDoc(doc(db, 'fz_users', 'boss@gmail.com'), {
     role: 'editor', addedBy: 'boss@gmail.com',
   }));
 });
@@ -151,10 +151,10 @@ test('主帳號不能刪除或降級自己', async () => {
 test('名單文件夾帶不允許的欄位時拒絕', async () => {
   await seedMember('boss@gmail.com', 'admin');
   const db = asUser('boss@gmail.com');
-  await assertFails(setDoc(doc(db, 'users', 'evil@gmail.com'), {
+  await assertFails(setDoc(doc(db, 'fz_users', 'evil@gmail.com'), {
     role: 'admin', addedAt: null, addedBy: 'boss@gmail.com', note: 'sneaky',
   }));
-  await assertFails(setDoc(doc(db, 'users', 'evil@gmail.com'), {
+  await assertFails(setDoc(doc(db, 'fz_users', 'evil@gmail.com'), {
     role: 'superuser', addedAt: null, addedBy: 'boss@gmail.com',
   }));
 });
@@ -169,8 +169,8 @@ test('主帳號可改備料係數', async () => {
 
 test('匿名不能讀寫名單', async () => {
   const db = asAnon();
-  await assertFails(getDoc(doc(db, 'users', 'boss@gmail.com')));
-  await assertFails(setDoc(doc(db, 'users', 'boss@gmail.com'), {
+  await assertFails(getDoc(doc(db, 'fz_users', 'boss@gmail.com')));
+  await assertFails(setDoc(doc(db, 'fz_users', 'boss@gmail.com'), {
     role: 'admin', addedAt: null, addedBy: 'x',
   }));
 });
