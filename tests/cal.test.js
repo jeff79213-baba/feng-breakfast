@@ -24,14 +24,22 @@ test('calCells 標示本月與選中日', () => {
   assert.equal(out.flags['2026-09-27'].inMonth, false);
 });
 
-test('stripCells 固定 7 天且第一個是 anchor', () => {
-  const out = stripCells('2026-10-04', { active: '2026-10-06', today: '2026-10-04' });
+test('stripCells 固定顯示當週週日至週六', () => {
+  const out = stripCells('2026-10-06', { active: '2026-10-06', today: '2026-10-04' });
   assert.equal(out.length, 7);
   assert.equal(out[0].key, '2026-10-04');
-  assert.equal(out[0].isActive, true);
+  assert.equal(out[6].key, '2026-10-10');
+  assert.equal(out[2].key, '2026-10-06');
+  assert.equal(out[2].isActive, true);
+  assert.equal(out[0].isActive, false);
   assert.equal(out[0].isToday, true);
-  assert.equal(out[2].isActive, false);
   assert.deepEqual(out.map(x => x.wd), ['日', '一', '二', '三', '四', '五', '六']);
+});
+
+test('stripCells 同一週內點選不會換週', () => {
+  const a = stripCells('2026-10-06', { active: '2026-10-06' }).map(x => x.key);
+  const b = stripCells('2026-10-09', { active: '2026-10-09' }).map(x => x.key);
+  assert.deepEqual(a, b);
 });
 
 test('dataDots 只回 weeks 中有資料的日期', () => {

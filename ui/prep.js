@@ -7,10 +7,14 @@ import { go, ctx, toast } from '../app.js';
 const $ = id => document.getElementById(id);
 
 const ROWS = [
-  { key: 'rice', label: '飯', color: '#1971c2' },
-  { key: 'porridge', label: '粥', color: '#1971c2' },
-  { key: 'egg', label: '茶葉蛋', color: '#1971c2' },
+  { key: 'rice', label: '飯', color: '#1971c2', unit: '米杯' },
+  { key: 'porridge', label: '粥', color: '#1971c2', unit: '米杯' },
+  { key: 'egg', label: '茶葉蛋', color: '#1971c2', unit: '' },
 ];
+
+function fmtTotal(item, n) {
+  return item.unit ? `${n} ${item.unit}` : String(n);
+}
 
 function prepOf() {
   return state.day.prep;
@@ -62,7 +66,7 @@ function renderRow(item) {
   eq.appendChild(document.createTextNode(`${base} ＋`));
   eq.appendChild(extra);
   eq.appendChild(document.createTextNode('＝'));
-  const total = el('b', null, String(prepLine(base, state.day.prep[item.key].extra).total));
+  const total = el('b', null, fmtTotal(item, prepLine(base, state.day.prep[item.key].extra).total));
   total.dataset.totalFor = item.key;
   eq.appendChild(total);
   row.appendChild(eq);
@@ -73,7 +77,7 @@ function refreshPrepTotals() {
   const base = prepBase(ctx.target, state.cfg.prep, headOf());
   for (const item of ROWS) {
     const node = document.querySelector(`[data-total-for="${item.key}"]`);
-    if (node) node.textContent = String(prepLine(base[item.key], prepOf()[item.key].extra).total);
+    if (node) node.textContent = fmtTotal(item, prepLine(base[item.key], prepOf()[item.key].extra).total);
   }
 }
 

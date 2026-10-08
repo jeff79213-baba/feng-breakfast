@@ -74,7 +74,11 @@
     <button id="exportBtn" class="topbar-btn" type="button">匯出</button>
     <button class="topbar-btn" data-go="settings" type="button">設定</button>
   </header>
-  <div id="dayStrip" class="day-strip"></div>
+  <div class="strip-nav">
+    <button id="stripPrev" class="btn btn-ghost strip-btn" type="button" aria-label="上一個禮拜">‹</button>
+    <div id="dayStrip" class="day-strip"></div>
+    <button id="stripNext" class="btn btn-ghost strip-btn" type="button" aria-label="下一個禮拜">›</button>
+  </div>
   <div id="dayBody" class="day-body"></div>
 </section>
 

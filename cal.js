@@ -1,4 +1,4 @@
-import { monthMatrix, weekOf, parseKey } from './core.js';
+import { monthMatrix, weekOf, weekStartOf, parseKey } from './core.js';
 
 const WD = ['日', '一', '二', '三', '四', '五', '六'];
 
@@ -27,7 +27,8 @@ export function calCells(year, month, opts = {}) {
 
 export function stripCells(anchor, opts = {}) {
   const today = opts.today || null;
-  return weekOf(anchor).map(key => {
+  const active = opts.active || anchor;
+  return weekOf(weekStartOf(anchor)).map(key => {
     const { y, m, d } = parseKey(key);
     const weekday = new Date(Date.UTC(y, m - 1, d)).getUTCDay();
     return {
@@ -35,7 +36,7 @@ export function stripCells(anchor, opts = {}) {
       md: `${m}/${d}`,
       wd: WD[weekday],
       isToday: key === today,
-      isActive: key === anchor,
+      isActive: key === active,
     };
   });
 }

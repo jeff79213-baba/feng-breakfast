@@ -1,7 +1,7 @@
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import {
-  pad2, keyOf, dateKey, parseKey, addDays, weekOf, monthMatrix, todayKey,
+  pad2, keyOf, dateKey, parseKey, addDays, weekOf, weekStartOf, monthMatrix, todayKey,
   BRACKETS, bracketOf, suggestDishes, suggestFruitDessert,
   peopleSum, peopleFor, emptyHead,
   DEFAULT_PREP, DEFAULT_SLOTS, DEFAULT_PANTRY,
@@ -41,6 +41,14 @@ test('weekOf 回傳含當日共 7 天', () => {
     '2026-10-04', '2026-10-05', '2026-10-06', '2026-10-07',
     '2026-10-08', '2026-10-09', '2026-10-10',
   ]);
+});
+
+test('weekStartOf 回傳當週週日', () => {
+  assert.equal(weekStartOf('2026-10-04'), '2026-10-04');
+  assert.equal(weekStartOf('2026-10-06'), '2026-10-04');
+  assert.equal(weekStartOf('2026-10-10'), '2026-10-04');
+  assert.equal(weekStartOf('2026-10-11'), '2026-10-11');
+  assert.equal(weekStartOf('2026-10-01'), '2026-09-27');
 });
 
 test('monthMatrix 以週日為每週起點，並補齊前後月', () => {

@@ -48,7 +48,7 @@ function prepCard() {
 }
 
 function slotCard() {
-  const c = card('用餐時段');
+  const c = card('牛奶飲料補貨時段');
   const save = async () => {
     await saveConfig({ slots: cfg.slots, updatedBy: (ctx.session && ctx.session.email) || null });
   };
@@ -69,6 +69,7 @@ function slotCard() {
     const label = el('input');
     label.type = 'text';
     label.value = slot.label;
+  label.placeholder = '時間(HH:MM)';
     label.style.width = '80px';
     label.setAttribute('aria-label', '時段名稱');
     label.addEventListener('change', async () => {
@@ -87,6 +88,7 @@ function slotCard() {
     const milk = el('input');
     milk.type = 'number';
     milk.value = String(slot.milk ?? 1);
+    milk.placeholder = '牛奶';
     milk.setAttribute('aria-label', slot.label + ' 預設牛奶');
     milk.addEventListener('change', async () => {
       slot.milk = Math.max(0, Number(milk.value) || 0);
@@ -98,6 +100,7 @@ function slotCard() {
     const foil = el('input');
     foil.type = 'number';
     foil.value = String(slot.foil ?? 12);
+    foil.placeholder = '鋁箔包';
     foil.setAttribute('aria-label', slot.label + ' 預設鋁箔包');
     foil.addEventListener('change', async () => {
       slot.foil = Math.max(0, Number(foil.value) || 0);
@@ -120,7 +123,7 @@ function slotCard() {
   const add = el('div', 'set-row');
   const label = el('input');
   label.type = 'text';
-  label.placeholder = 'HH:MM';
+  label.placeholder = '時間';
   label.setAttribute('aria-label', '新增時段');
   const btn = el('button', 'btn btn-sm', '＋新增時段');
   btn.type = 'button';
@@ -403,7 +406,7 @@ export async function renderSettings() {
     body.appendChild(prepCard());
     body.appendChild(memberCard());
   } else {
-    const note = el('p', 'hint', '備料係數、用餐時段與人員管理僅主帳號可調整。');
+    const note = el('p', 'hint', '備料係數、牛奶飲料補貨時段與人員管理僅主帳號可調整。');
     body.appendChild(note);
   }
 

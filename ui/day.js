@@ -1,6 +1,6 @@
 import { stripCells } from '../cal.js';
 import {
-  todayKey, suggestDishes, suggestFruitDessert, peopleSum, peopleFor, summaryLine,
+  todayKey, weekOf, weekStartOf, addDays, suggestDishes, suggestFruitDessert, peopleSum, peopleFor, summaryLine,
 } from '../core.js';
 import { CATEGORIES } from '../menu-lib.js';
 import { loadDay, saveDay, loadConfig, Debouncer } from '../dslib.js';
@@ -18,7 +18,7 @@ const HEAD_FIELDS = [
 
 export const TARGET_LABEL = { b1: '一館', b2: '二館', all: '一館+二館' };
 
-export const state = { date: null, day: null, cfg: null };
+export const state = { date: null, day: null, cfg: null, stripStart: null };
 
 export function getDay() { return state; }
 
@@ -28,9 +28,10 @@ const headSaver = new Debouncer(async payload => {
 
 function renderStrip() {
   const strip = $('dayStrip');
+  const left = strip.scrollLeft;
   strip.textContent = '';
   const today = todayKey();
-  for (const cell of stripCells(state.date, { active: state.date, today })) {
+  for (const cell of stripCells(state.stripStart, { active: state.date, today })) {
     const chip = el('button', 'day-chip' + (cell.isActive ? ' is-active' : ''));
     chip.type = 'button';
     chip.dataset.date = cell.key;
@@ -38,6 +39,7 @@ function renderStrip() {
     chip.appendChild(document.createTextNode(cell.md));
     strip.appendChild(chip);
   }
+  strip.scrollLeft = left;
 }
 
 function renderHead() {
@@ -166,6 +168,9 @@ function renderExtraCard() {
 
 export async function renderDay(date) {
   state.date = date;
+  if (!state.stripStart || !weekOf(state.stripStart).includes(date)) {
+    state.stripStart = weekStartOf(date);
+  }
   state.cfg = await loadConfig();
   state.day = await loadDay(date);
   ctx.anchor = date;
@@ -197,6 +202,14 @@ export async function renderDay(date) {
 }
 
 export function mountDay() {
+  $('stripPrev').addEventListener('click', () => {
+    state.stripStart = addDays(state.stripStart || weekStartOf(state.date || todayKey()), -7);
+    renderStrip();
+  });
+  $('stripNext').addEventListener('click', () => {
+    state.stripStart = addDays(state.stripStart || weekStartOf(state.date || todayKey()), 7);
+    renderStrip();
+  });
   $('dayStrip').addEventListener('click', e => {
     const chip = e.target.closest('.day-chip');
     if (!chip) return;

@@ -38,6 +38,12 @@ export function weekOf(anchor) {
   return Array.from({ length: 7 }, (_, i) => addDays(anchor, i));
 }
 
+export function weekStartOf(key) {
+  const { y, m, d } = parseKey(key);
+  const weekday = new Date(Date.UTC(y, m - 1, d)).getUTCDay();
+  return addDays(key, -weekday);
+}
+
 export function monthMatrix(year, month) {
   const firstWeekday = new Date(Date.UTC(year, month - 1, 1)).getUTCDay();
   const monthStart = keyOf(year, month, 1);
