@@ -123,8 +123,8 @@ export async function listMembers() {
 }
 
 export async function addMember(rawEmail, role) {
-  const email = normalizeEmail(rawEmail);
-  if (!isValidEmail(email)) throw new Error('請輸入完整的 Email');
+  const email = accountToEmail(rawEmail);
+  if (!email) throw new Error('帳號格式不正確，請輸入短帳號或完整 Email');
   if (!isValidRole(role)) throw new Error('角色不正確');
   await setDoc(doc(store, MEMBERS, email), {
     role,

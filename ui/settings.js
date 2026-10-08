@@ -228,7 +228,7 @@ function dishLibCard() {
 
 function memberCard() {
   const c = card('人員管理');
-  c.appendChild(el('p', 'hint', '把員工的 Google Email 加入名單就能登入，離職時刪除那一列即可。'));
+  c.appendChild(el('p', 'hint', '把員工加入名單就能登入，離職時刪除那一列即可。'));
   const list = el('div');
   list.id = 'memberList';
 
@@ -278,11 +278,12 @@ function memberCard() {
 
     const add = el('div', 'set-row');
     const email = el('input');
-    email.type = 'email';
+    email.type = 'text';
     email.id = 'newMemberEmail';
-    email.placeholder = 'someone@gmail.com';
+    email.inputMode = 'latin';
+    email.autocomplete = 'off';
     email.style.width = '190px';
-    email.setAttribute('aria-label', '新增人員 Email');
+    email.setAttribute('aria-label', '新增人員帳號');
     const btn = el('button', 'btn btn-sm btn-primary', '＋加入');
     btn.type = 'button';
     btn.addEventListener('click', async () => {
@@ -296,6 +297,7 @@ function memberCard() {
     add.appendChild(email);
     add.appendChild(btn);
     list.appendChild(add);
+    list.appendChild(el('p', 'hint', '輸入短帳號即可（如 staff1，系統自動補上網域）；Google 登入的請輸入完整 Gmail。帳密登入另需用開帳號指令設定密碼。'));
   };
 
   const wrap = el('div');
