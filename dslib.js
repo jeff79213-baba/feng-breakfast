@@ -1,7 +1,8 @@
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js';
 import {
   getAuth, onAuthStateChanged, getRedirectResult, signInWithPopup, signInWithRedirect,
-  signInWithEmailAndPassword, GoogleAuthProvider, signOut,
+  signInWithEmailAndPassword, EmailAuthProvider, reauthenticateWithCredential, updatePassword,
+  GoogleAuthProvider, signOut,
 } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js';
 import {
   getFirestore, doc, getDoc, getDocs, setDoc, deleteDoc, updateDoc, collection, serverTimestamp,
@@ -84,6 +85,19 @@ export async function signInWithGoogle() {
 
 export async function logout() {
   await signOut(auth);
+}
+
+export function isPasswordAccount() {
+  const u = auth && auth.currentUser;
+  return !!(u && (u.providerData || []).some(p => p.providerId === 'password'));
+}
+
+export async function changeOwnPassword(currentPassword, newPassword) {
+  const u = auth && auth.currentUser;
+  if (!u || !u.email) throw new Error('未登入');
+  if (!newPassword || newPassword.length < 6) throw new Error('新密碼至少 6 碼');
+  await reauthenticateWithCredential(u, EmailAuthProvider.credential(u.email, currentPassword));
+  await updatePassword(u, newPassword);
 }
 
 export async function signInWithAccount(rawAccount, password) {

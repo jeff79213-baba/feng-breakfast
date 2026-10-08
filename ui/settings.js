@@ -1,6 +1,6 @@
 import { CATEGORIES } from '../menu-lib.js';
 import { roleLabel } from '../core.js';
-import { loadConfig, saveConfig, listMembers, addMember, setMemberRole, removeMember } from '../dslib.js';
+import { loadConfig, saveConfig, listMembers, addMember, setMemberRole, removeMember, isPasswordAccount, changeOwnPassword } from '../dslib.js';
 import { go, ctx, toast } from '../app.js';
 import { el } from './dom.js';
 
@@ -316,8 +316,76 @@ function myAccountCard() {
   const role = ctx.session && ctx.session.role;
   row.appendChild(el('span', 'badge' + (role === 'admin' ? ' badge-owner' : ''), roleLabel(role)));
   c.appendChild(row);
+  if (isPasswordAccount()) {
+    c.appendChild(passwordForm());
+  } else {
+    c.appendChild(el('p', 'hint', 'Google 登入的帳號請到 Google 帳戶更改密碼。'));
+  }
   c.appendChild(el('p', 'hint', '要用別的帳號登入，請先登出。'));
   return c;
+}
+
+function passwordForm() {
+  const wrap = el('div');
+  const mkPw = (placeholder) => {
+    const box = el('span', 'pw-wrap');
+    const input = el('input');
+    input.type = 'password';
+    input.placeholder = placeholder;
+    input.autocomplete = 'new-password';
+    input.style.width = '100%';
+    const t = el('button', 'pw-toggle', '顯示');
+    t.type = 'button';
+    t.addEventListener('click', () => {
+      const show = input.type === 'password';
+      input.type = show ? 'text' : 'password';
+      t.textContent = show ? '隱藏' : '顯示';
+    });
+    box.appendChild(input);
+    box.appendChild(t);
+    return { box, input };
+  };
+  const cur = mkPw('目前密碼');
+  const next = mkPw('新密碼（至少 6 碼）');
+  const again = mkPw('再輸入一次新密碼');
+  const msg = el('p', 'hint', '');
+  const btn = el('button', 'btn btn-primary btn-block', '更改密碼');
+  btn.type = 'button';
+  btn.style.marginTop = '10px';
+  btn.addEventListener('click', async () => {
+    msg.textContent = '';
+    if (next.input.value !== again.input.value) {
+      msg.textContent = '兩次輸入的新密碼不一致';
+      msg.className = 'error';
+      return;
+    }
+    btn.disabled = true;
+    btn.textContent = '更改中…';
+    try {
+      await changeOwnPassword(cur.input.value, next.input.value);
+      cur.input.value = '';
+      next.input.value = '';
+      again.input.value = '';
+      msg.textContent = '密碼已更改，下次請用新密碼登入';
+      msg.className = 'hint';
+      toast('密碼已更改');
+    } catch (e) {
+      const code = (e && e.code) || '';
+      msg.textContent = (code === 'auth/invalid-credential' || code === 'auth/wrong-password')
+        ? '目前密碼錯誤'
+        : (e && e.message) || '更改失敗，請再試一次';
+      msg.className = 'error';
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '更改密碼';
+    }
+  });
+  wrap.appendChild(cur.box);
+  wrap.appendChild(next.box);
+  wrap.appendChild(again.box);
+  wrap.appendChild(btn);
+  wrap.appendChild(msg);
+  return wrap;
 }
 
 export async function renderSettings() {
