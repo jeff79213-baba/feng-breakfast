@@ -182,9 +182,18 @@ export async function loadDay(date) {
   const base = emptyDay(date);
   if (!snap.exists()) return base;
   const data = snap.data() || {};
+  const dishes = (data && data.dishes) || {};
+  const extra = (data && data.extra) || {};
+  const arr = v => (Array.isArray(v) ? v : []);
   return {
     ...base, ...data,
     head: { b1: { ...emptyHead(), ...(data.head && data.head.b1) }, b2: { ...emptyHead(), ...(data.head && data.head.b2) } },
+    dishes: {
+      b1: { ...emptyTargetDishes(), ...(dishes.b1 || {}) },
+      b2: { ...emptyTargetDishes(), ...(dishes.b2 || {}) },
+      all: { ...emptyTargetDishes(), ...(dishes.all || {}) },
+    },
+    extra: { b1: arr(extra.b1), b2: arr(extra.b2), all: arr(extra.all) },
     prep: {
       ...base.prep, ...(data.prep || {}),
       done: { ...base.prep.done, ...((data.prep && data.prep.done) || {}) },
