@@ -1,5 +1,5 @@
 import { CATEGORIES } from '../menu-lib.js';
-import { roleLabel, ACCOUNT_DOMAIN, DEFAULT_MEMBER_PASSWORD, isValidPassword } from '../core.js';
+import { roleLabel, ACCOUNT_DOMAIN, DEFAULT_MEMBER_PASSWORD, isValidPassword, SUGGEST_FIELDS } from '../core.js';
 import { loadConfig, saveConfig, listMembers, addMember, createMemberAccount, setMemberRole, removeMember, isPasswordAccount, changeOwnPassword } from '../dslib.js';
 import { go, ctx, toast } from '../app.js';
 import { el } from './dom.js';
@@ -44,6 +44,84 @@ function prepCard() {
   c.appendChild(numberRow('蛋／庫存扣除', p.eggStock, '1', v => save({ eggStock: v })));
   c.appendChild(numberRow('蛋／預留顆數', p.eggReserveCount, '1', v => save({ eggReserveCount: v })));
   c.appendChild(numberRow('蛋／預留百分比', p.eggReservePct, '1', v => save({ eggReservePct: v })));
+  return c;
+}
+
+function bracketCard() {
+  const c = card('級距建議設定（房間數 → 建議道數）');
+  c.appendChild(el('p', 'hint', '依房間數最近的級距套用建議，只會填入尚未選菜的分類。可自行調整各級距的房間數與各分類道數。'));
+  const save = async () => {
+    await saveConfig({ suggest: cfg.suggest, updatedBy: (ctx.session && ctx.session.email) || null });
+    toast('已儲存');
+  };
+
+  for (const row of cfg.suggest) {
+    const block = el('div', 'bracket-block');
+    const head = el('div', 'bracket-head');
+    const roomsLabel = el('label', 'bracket-rooms');
+    roomsLabel.appendChild(el('span', null, '房間數'));
+    const roomsInput = el('input');
+    roomsInput.type = 'number';
+    roomsInput.inputMode = 'numeric';
+    roomsInput.min = '0';
+    roomsInput.value = String(row.rooms);
+    roomsInput.setAttribute('aria-label', '級距房間數');
+    roomsInput.addEventListener('change', async () => {
+      row.rooms = Math.max(0, Math.round(Number(roomsInput.value) || 0));
+      roomsInput.value = String(row.rooms);
+      cfg.suggest.sort((a, b) => a.rooms - b.rooms);
+      await save();
+      go('settings');
+    });
+    roomsLabel.appendChild(roomsInput);
+    head.appendChild(roomsLabel);
+
+    const del = el('button', 'btn btn-sm btn-danger', '刪除');
+    del.type = 'button';
+    del.disabled = cfg.suggest.length <= 1;
+    del.addEventListener('click', async () => {
+      cfg.suggest = cfg.suggest.filter(r => r !== row);
+      await save();
+      go('settings');
+    });
+    head.appendChild(del);
+    block.appendChild(head);
+
+    const grid = el('div', 'bracket-grid');
+    for (const cat of CATEGORIES) {
+      const cell = el('label', 'bracket-cell');
+      cell.appendChild(el('span', null, cat.label));
+      const inp = el('input');
+      inp.type = 'number';
+      inp.inputMode = 'numeric';
+      inp.min = '0';
+      inp.value = String(row[cat.key] || 0);
+      inp.setAttribute('aria-label', cat.label + '建議道數');
+      inp.addEventListener('change', async () => {
+        row[cat.key] = Math.max(0, Math.round(Number(inp.value) || 0));
+        inp.value = String(row[cat.key]);
+        await save();
+      });
+      cell.appendChild(inp);
+      grid.appendChild(cell);
+    }
+    block.appendChild(grid);
+    c.appendChild(block);
+  }
+
+  const add = el('div', 'set-row');
+  const btn = el('button', 'btn btn-sm', '＋新增級距');
+  btn.type = 'button';
+  btn.addEventListener('click', async () => {
+    const maxRooms = cfg.suggest.reduce((m, r) => Math.max(m, r.rooms), 0);
+    const row = { rooms: maxRooms + 5 };
+    for (const f of SUGGEST_FIELDS) row[f] = 0;
+    cfg.suggest.push(row);
+    await save();
+    go('settings');
+  });
+  add.appendChild(btn);
+  c.appendChild(add);
   return c;
 }
 
@@ -437,9 +515,10 @@ export async function renderSettings() {
   if (isAdmin) {
     body.appendChild(slotCard());
     body.appendChild(prepCard());
+    body.appendChild(bracketCard());
     body.appendChild(memberCard());
   } else {
-    const note = el('p', 'hint', '備料係數、牛奶飲料補貨時段與人員管理僅主帳號可調整。');
+    const note = el('p', 'hint', '備料係數、級距建議、牛奶飲料補貨時段與人員管理僅主帳號可調整。');
     body.appendChild(note);
   }
 

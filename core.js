@@ -93,6 +93,41 @@ export function suggestFruitDessert(rooms) {
   return { ...FRUIT_TABLE[bracketOf(rooms)] };
 }
 
+export const SUGGEST_FIELDS = ['meat', 'veg', 'egg', 'side', 'fry', 'braise', 'fruit', 'dessert'];
+
+export const DEFAULT_SUGGEST = BRACKETS.map(rooms => ({
+  rooms,
+  ...DISH_TABLE[rooms],
+  ...FRUIT_TABLE[rooms],
+}));
+
+export function normalizeSuggest(raw) {
+  const src = Array.isArray(raw) ? raw : DEFAULT_SUGGEST;
+  const rows = [];
+  for (const r of src) {
+    if (!r || typeof r !== 'object') continue;
+    const row = { rooms: Math.max(0, Math.round(num(r.rooms, 0))) };
+    for (const k of SUGGEST_FIELDS) row[k] = Math.max(0, Math.round(num(r[k], 0)));
+    rows.push(row);
+  }
+  rows.sort((a, b) => a.rooms - b.rooms);
+  return rows;
+}
+
+export function suggestFor(rooms, raw) {
+  const rows = normalizeSuggest(raw);
+  const out = {};
+  for (const k of SUGGEST_FIELDS) out[k] = 0;
+  if (!rows.length) return out;
+  const r = Number(rooms) || 0;
+  let best = rows[0];
+  for (const row of rows) {
+    if (Math.abs(row.rooms - r) < Math.abs(best.rooms - r)) best = row;
+  }
+  for (const k of SUGGEST_FIELDS) out[k] = best[k] || 0;
+  return out;
+}
+
 export function emptyHead() {
   return { rooms: 0, adult: 0, child: 0, infant: 0, kid: 0, total: 0 };
 }

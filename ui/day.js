@@ -1,6 +1,6 @@
 import { stripCells } from '../cal.js';
 import {
-  todayKey, weekOf, weekStartOf, addDays, suggestDishes, suggestFruitDessert, peopleSum, peopleFor, summaryLine,
+  todayKey, weekOf, weekStartOf, addDays, suggestFor, peopleSum, peopleFor, summaryLine,
 } from '../core.js';
 import { CATEGORIES } from '../menu-lib.js';
 import { loadDay, saveDay, loadConfig, Debouncer } from '../dslib.js';
@@ -127,12 +127,11 @@ function refreshSuggest() {
   const sug = $('suggestLine');
   if (!sug) return;
   const rooms = peopleFor(ctx.target, state.day.head.b1, state.day.head.b2).rooms;
-  const d = suggestDishes(rooms);
-  const fd = suggestFruitDessert(rooms);
+  const counts = suggestFor(rooms, state.cfg.suggest);
   if (meta) meta.textContent = `${TARGET_LABEL[ctx.target]} ${rooms} 間 → 建議`;
+  const parts = CATEGORIES.map(c => `${c.label}${counts[c.key] || 0}`);
   sug.textContent =
-    `菜色 肉${d.meat} 菜${d.veg} 蛋${d.egg} 小菜${d.side} 炸物${d.fry} 滷菜${d.braise}`
-    + `｜水果${fd.fruit} 甜點${fd.dessert}（僅供參考）`;
+    `菜色 ${parts.slice(0, 6).join(' ')}｜${parts.slice(6).join(' ')}（僅供參考）`;
 
   for (const cat of CATEGORIES) {
     const node = $('dayBody').querySelector(`[data-open-dish="${cat.key}"] .dish-count`);
@@ -250,7 +249,7 @@ async function copyLine() {
 
 async function applySuggestion() {
   const rooms = peopleFor(ctx.target, state.day.head.b1, state.day.head.b2).rooms;
-  const counts = { ...suggestDishes(rooms), ...suggestFruitDessert(rooms) };
+  const counts = suggestFor(rooms, state.cfg.suggest);
   const lib = (state.cfg && state.cfg.dishLib) || {};
   const cur = state.day.dishes[ctx.target];
   let filled = 0;

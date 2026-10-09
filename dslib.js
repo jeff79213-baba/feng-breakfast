@@ -10,8 +10,9 @@ import {
 } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js';
 
 import {
-  DEFAULT_PREP, DEFAULT_SLOTS, DEFAULT_PANTRY,
+  DEFAULT_PREP, DEFAULT_SLOTS, DEFAULT_PANTRY, DEFAULT_SUGGEST,
   normalizeEmail, isValidEmail, isValidRole, isValidPassword, memberOf, accountToEmail,
+  normalizeSuggest,
 } from './core.js';
 import { DEFAULT_DISH_LIB } from './menu-lib.js';
 
@@ -199,6 +200,7 @@ export function emptyConfig() {
     dishLib: JSON.parse(JSON.stringify(DEFAULT_DISH_LIB)),
     prep: { ...DEFAULT_PREP },
     slots: DEFAULT_SLOTS.map(s => ({ ...s })),
+    suggest: DEFAULT_SUGGEST.map(r => ({ ...r })),
     updatedAt: null, updatedBy: null,
   };
 }
@@ -241,6 +243,7 @@ export async function loadConfig() {
     ...base, ...data,
     prep: { ...base.prep, ...(data.prep || {}) },
     slots: Array.isArray(data.slots) && data.slots.length ? data.slots : base.slots,
+    suggest: normalizeSuggest(data.suggest),
   };
 }
 

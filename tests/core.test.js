@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   pad2, keyOf, dateKey, parseKey, addDays, weekOf, weekStartOf, monthMatrix, todayKey,
   BRACKETS, bracketOf, suggestDishes, suggestFruitDessert,
+  DEFAULT_SUGGEST, SUGGEST_FIELDS, normalizeSuggest, suggestFor,
   peopleSum, peopleFor, emptyHead,
   DEFAULT_PREP, DEFAULT_SLOTS, DEFAULT_PANTRY,
   prepBase, prepLine, drinkTotals, pantrySplit, summaryLine,
@@ -95,6 +96,38 @@ test('suggestFruitDessert 對應規格表', () => {
   assert.deepEqual(suggestFruitDessert(15), { fruit: 3, dessert: 1 });
   assert.deepEqual(suggestFruitDessert(23), { fruit: 5, dessert: 2 });
   assert.deepEqual(suggestFruitDessert(35), { fruit: 6, dessert: 3 });
+});
+
+test('DEFAULT_SUGGEST 每個級距都有八個欄位', () => {
+  assert.deepEqual(DEFAULT_SUGGEST.map(r => r.rooms), [5, 10, 15, 20, 25, 30]);
+  for (const row of DEFAULT_SUGGEST) {
+    for (const k of SUGGEST_FIELDS) assert.equal(typeof row[k], 'number');
+  }
+  assert.equal(DEFAULT_SUGGEST[0].meat, 1);
+  assert.equal(DEFAULT_SUGGEST[0].fruit, 2);
+});
+
+test('normalizeSuggest 排序、補零、容錯', () => {
+  const rows = normalizeSuggest([{ rooms: 20, veg: 5 }, { rooms: 10, meat: 2 }, null, 'x']);
+  assert.deepEqual(rows.map(r => r.rooms), [10, 20]);
+  assert.equal(rows[0].meat, 2);
+  assert.equal(rows[0].veg, 0);
+  assert.equal(rows[1].veg, 5);
+  assert.equal(rows[0].dessert, 0);
+});
+
+test('suggestFor 依最近級距取自訂表；空表回全零；未給表用預設', () => {
+  const custom = [
+    { rooms: 5, meat: 9, veg: 9, egg: 9, side: 9, fry: 9, braise: 9, fruit: 9, dessert: 9 },
+    { rooms: 30, meat: 1, veg: 1, egg: 1, side: 1, fry: 1, braise: 1, fruit: 1, dessert: 1 },
+  ];
+  assert.equal(suggestFor(6, custom).meat, 9);
+  assert.equal(suggestFor(28, custom).meat, 1);
+  assert.deepEqual(suggestFor(5, []), {
+    meat: 0, veg: 0, egg: 0, side: 0, fry: 0, braise: 0, fruit: 0, dessert: 0,
+  });
+  assert.equal(suggestFor(12, null).veg, 2);
+  assert.equal(suggestFor(12, null).fruit, 2);
 });
 
 test('emptyHead 全部為 0', () => {

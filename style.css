@@ -357,6 +357,34 @@ body { padding-bottom: env(safe-area-inset-bottom); }
 .badge-owner { background: #fdf0d8; color: #c2255c; }
 .badge-off { background: #f6e0df; color: var(--danger); }
 
+.bracket-block {
+  margin-bottom: 12px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+.bracket-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.bracket-rooms { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 700; }
+.bracket-rooms input {
+  width: 72px;
+  min-height: 38px;
+  padding: 0 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  text-align: right;
+}
+.bracket-head .btn { margin-left: auto; }
+.bracket-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.bracket-cell { display: flex; flex-direction: column; gap: 2px; font-size: 12px; color: var(--ink-soft); }
+.bracket-cell input {
+  width: 100%;
+  min-height: 38px;
+  padding: 0 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  text-align: right;
+}
+
 .toast {
   position: fixed;
   left: 50%;
