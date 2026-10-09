@@ -231,7 +231,7 @@ function dishLibCard() {
 
 function memberCard() {
   const c = card('人員管理');
-  c.appendChild(el('p', 'hint', '把員工加入名單就能登入，離職時刪除那一列即可。'));
+  c.appendChild(el('p', 'hint', '把員工加入名單就能登入，離職時刪除那一列即可。刪除只停用權限，登入帳號殘留需在電腦執行清除：node tools/set-account.js 短帳號 --remove。'));
   const list = el('div');
   list.id = 'memberList';
 
