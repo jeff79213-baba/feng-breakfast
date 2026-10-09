@@ -1,5 +1,5 @@
 import { CATEGORIES } from '../menu-lib.js';
-import { roleLabel } from '../core.js';
+import { roleLabel, ACCOUNT_DOMAIN } from '../core.js';
 import { loadConfig, saveConfig, listMembers, addMember, setMemberRole, removeMember, isPasswordAccount, changeOwnPassword } from '../dslib.js';
 import { go, ctx, toast } from '../app.js';
 import { el } from './dom.js';
@@ -289,18 +289,28 @@ function memberCard() {
     email.setAttribute('aria-label', '新增人員帳號');
     const btn = el('button', 'btn btn-sm btn-primary', '＋加入');
     btn.type = 'button';
+    const note = el('p', 'hint', '');
     btn.addEventListener('click', async () => {
       try {
-        await addMember(email.value, 'editor');
+        const added = await addMember(email.value, 'editor');
         email.value = '';
-        toast('已加入（預設為員工）');
+        const short = added.endsWith('@' + ACCOUNT_DOMAIN)
+          ? added.slice(0, -(ACCOUNT_DOMAIN.length + 1)) : null;
+        if (short) {
+          toast('已加入白名單，還需設密碼才能登入');
+          note.textContent = `已加入 ${added}（預設為員工）。請在電腦執行設定密碼後才能用帳密登入：node tools/set-account.js ${short} <密碼> editor`;
+        } else {
+          toast('已加入，可直接用 Google 登入');
+          note.textContent = `已加入 ${added}（預設為員工），對方可直接用 Google 登入，無需密碼。`;
+        }
         paint();
       } catch (e) { toast(e.message); }
     });
     add.appendChild(email);
     add.appendChild(btn);
     list.appendChild(add);
-    list.appendChild(el('p', 'hint', '輸入短帳號即可（如 staff1，系統自動補上網域）；Google 登入的請輸入完整 Gmail。帳密登入另需用開帳號指令設定密碼。'));
+    list.appendChild(note);
+    list.appendChild(el('p', 'hint', '輸入短帳號即可，系統自動補上網域；Google 登入的請輸入完整 Gmail。'));
   };
 
   const wrap = el('div');
