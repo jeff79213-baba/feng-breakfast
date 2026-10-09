@@ -49,8 +49,13 @@ async function renderDish() {
   const color = COLOR_BY_KEY[mode.catKey];
   const chosen = new Set(day.dishes[ctx.target][mode.catKey] || []);
   const extraChosen = new Set(day.extra[ctx.target] || []);
-  const list = (cfg.dishLib[mode.catKey] || []).slice();
+  const isAll = ctx.target === 'all';
+  const master = (day.dishes.all && day.dishes.all[mode.catKey]) || [];
+  const libList = (cfg.dishLib[mode.catKey] || []).slice();
+  const list = isAll ? libList.slice() : [...new Set([...master, ...chosen])];
   list.sort((a, b) => Number(chosen.has(b)) - Number(chosen.has(a)) || a.localeCompare(b, 'zh-Hant'));
+  const extraList = libList.slice();
+  extraList.sort((a, b) => Number(extraChosen.has(b)) - Number(extraChosen.has(a)) || a.localeCompare(b, 'zh-Hant'));
 
   const box = el('div', 'check-body');
 
@@ -60,7 +65,10 @@ async function renderDish() {
   box.appendChild(title);
 
   const main = el('section', 'check-group');
-  main.appendChild(el('h2', 'check-group-title', `當天出品｜${cat.label}`));
+  main.appendChild(el('h2', 'check-group-title', isAll ? `當天出品｜${cat.label}` : `當天出品｜${cat.label}（由 1+2 館刪減）`));
+  if (!list.length) {
+    main.appendChild(el('p', 'suggest', '「一館+二館」這一類還沒選菜，請先到那裡決定菜色。'));
+  }
   for (const name of list) {
     main.appendChild(row({
       label: name,
@@ -79,7 +87,7 @@ async function renderDish() {
 
   const extra = el('section', 'check-group');
   extra.appendChild(el('h2', 'check-group-title', '多備（加菜）｜與當天出品互不衝突'));
-  for (const name of list) {
+  for (const name of extraList) {
     extra.appendChild(row({
       label: name,
       color: '#8a8a8a',

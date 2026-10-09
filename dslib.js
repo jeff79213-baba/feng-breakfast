@@ -12,7 +12,7 @@ import {
 import {
   DEFAULT_PREP, DEFAULT_SLOTS, DEFAULT_PANTRY, DEFAULT_SUGGEST,
   normalizeEmail, isValidEmail, isValidRole, isValidPassword, memberOf, accountToEmail,
-  normalizeSuggest,
+  normalizeSuggest, subsetDishes,
 } from './core.js';
 import { DEFAULT_DISH_LIB } from './menu-lib.js';
 
@@ -217,8 +217,8 @@ export async function loadDay(date) {
     ...base, ...data,
     head: { b1: { ...emptyHead(), ...(data.head && data.head.b1) }, b2: { ...emptyHead(), ...(data.head && data.head.b2) } },
     dishes: {
-      b1: { ...emptyTargetDishes(), ...(dishes.b1 || {}) },
-      b2: { ...emptyTargetDishes(), ...(dishes.b2 || {}) },
+      b1: subsetDishes(dishes.b1, dishes.all),
+      b2: subsetDishes(dishes.b2, dishes.all),
       all: { ...emptyTargetDishes(), ...(dishes.all || {}) },
     },
     extra: { b1: arr(extra.b1), b2: arr(extra.b2), all: arr(extra.all) },

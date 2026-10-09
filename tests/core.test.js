@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {
   pad2, keyOf, dateKey, parseKey, addDays, weekOf, weekStartOf, monthMatrix, todayKey,
   BRACKETS, bracketOf, suggestDishes, suggestFruitDessert,
-  DEFAULT_SUGGEST, SUGGEST_FIELDS, normalizeSuggest, suggestFor,
+  DEFAULT_SUGGEST, SUGGEST_FIELDS, normalizeSuggest, suggestFor, subsetDishes,
   peopleSum, peopleFor, emptyHead,
   DEFAULT_PREP, DEFAULT_SLOTS, DEFAULT_PANTRY,
   prepBase, prepLine, drinkTotals, pantrySplit, summaryLine,
@@ -128,6 +128,27 @@ test('suggestFor 依最近級距取自訂表；空表回全零；未給表用預
   });
   assert.equal(suggestFor(12, null).veg, 2);
   assert.equal(suggestFor(12, null).fruit, 2);
+});
+
+test('subsetDishes 未指定時繼承母清單（一/二館預設等於 1+2 館）', () => {
+  const master = { meat: ['A', 'B'], veg: ['V1'] };
+  const out = subsetDishes(undefined, master);
+  assert.deepEqual(out.meat, ['A', 'B']);
+  assert.deepEqual(out.veg, ['V1']);
+  assert.deepEqual(out.egg, []);
+  assert.equal(SUGGEST_FIELDS.every(k => Array.isArray(out[k])), true);
+});
+
+test('subsetDishes 明確清單取母清單的交集（刪減）', () => {
+  const master = { meat: ['A', 'B', 'C'], veg: ['V1', 'V2'] };
+  const out = subsetDishes({ meat: ['A', 'C', 'Z'], veg: [] }, master);
+  assert.deepEqual(out.meat, ['A', 'C']);
+  assert.deepEqual(out.veg, []);
+});
+
+test('subsetDishes 母清單為空時保留原有資料（相容舊資料）', () => {
+  const out = subsetDishes({ meat: ['A'] }, { meat: [] });
+  assert.deepEqual(out.meat, ['A']);
 });
 
 test('emptyHead 全部為 0', () => {

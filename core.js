@@ -95,6 +95,23 @@ export function suggestFruitDessert(rooms) {
 
 export const SUGGEST_FIELDS = ['meat', 'veg', 'egg', 'side', 'fry', 'braise', 'fruit', 'dessert'];
 
+export const DISH_KEYS = SUGGEST_FIELDS;
+
+export function subsetDishes(sub, master) {
+  const m = master || {};
+  const out = {};
+  for (const k of DISH_KEYS) {
+    const ml = Array.isArray(m[k]) ? m[k] : [];
+    if (sub == null || sub[k] === undefined || sub[k] === null) {
+      out[k] = ml.slice();
+    } else {
+      const sl = Array.isArray(sub[k]) ? sub[k] : [];
+      out[k] = ml.length ? sl.filter(n => ml.includes(n)) : sl.slice();
+    }
+  }
+  return out;
+}
+
 export const DEFAULT_SUGGEST = BRACKETS.map(rooms => ({
   rooms,
   ...DISH_TABLE[rooms],

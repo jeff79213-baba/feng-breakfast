@@ -249,23 +249,39 @@ async function copyLine() {
 
 async function applySuggestion() {
   const rooms = peopleFor(ctx.target, state.day.head.b1, state.day.head.b2).rooms;
-  const counts = suggestFor(rooms, state.cfg.suggest);
-  const lib = (state.cfg && state.cfg.dishLib) || {};
-  const cur = state.day.dishes[ctx.target];
-  let filled = 0;
-  for (const cat of CATEGORIES) {
-    if ((cur[cat.key] || []).length) continue;
-    const names = (lib[cat.key] || []).slice(0, Math.max(0, counts[cat.key] || 0));
-    if (!names.length) continue;
-    cur[cat.key] = names;
-    filled++;
+  if (!rooms) {
+    toast('先輸入人數才有建議可套用');
+    return;
   }
-  if (!filled) {
-    toast(rooms ? '每類都有菜了，無需套用' : '先輸入人數才有建議可套用');
+  const counts = suggestFor(rooms, state.cfg.suggest);
+  const isAll = ctx.target === 'all';
+  const lib = (state.cfg && state.cfg.dishLib) || {};
+  const master = (state.day.dishes && state.day.dishes.all) || {};
+  if (!isAll && CATEGORIES.every(c => !((master[c.key] || []).length))) {
+    toast('請先在「一館+二館」選菜，再回來一/二館刪減');
+    return;
+  }
+  const cur = state.day.dishes[ctx.target];
+  let changed = 0;
+  for (const cat of CATEGORIES) {
+    const want = Math.max(0, Math.round(counts[cat.key] || 0));
+    const pool = isAll ? (lib[cat.key] || []) : (master[cat.key] || []);
+    const before = cur[cat.key] || [];
+    let next = before.filter(n => pool.includes(n));
+    for (const n of pool) {
+      if (next.length >= want) break;
+      if (!next.includes(n)) next.push(n);
+    }
+    next = next.slice(0, want);
+    if (next.join('\u0000') !== before.join('\u0000')) changed++;
+    cur[cat.key] = next;
+  }
+  if (!changed) {
+    toast('道數已符合建議');
     return;
   }
   await saveDay(state.date, { dishes: { [ctx.target]: cur } });
-  toast(`已按建議帶入 ${filled} 類`);
+  toast(`已依 ${TARGET_LABEL[ctx.target]} ${rooms} 間補足到建議道數`);
   go('day', { date: state.date });
 }
 
