@@ -173,16 +173,8 @@ export function mountPrep() {
   document.addEventListener('fz:day-rendered', () => {
     const body = $('dayBody');
     if (!body || $('prepCard')) return;
-    const anchor = $('suggestLine');
-    const card = renderPrepCard();
-    const drinks = renderDrinkCard();
-    if (anchor && anchor.parentNode) {
-      anchor.parentNode.after(card);
-      card.after(drinks);
-    } else {
-      body.appendChild(card);
-      body.appendChild(drinks);
-    }
+    body.appendChild(renderPrepCard());
+    body.appendChild(renderDrinkCard());
   });
 
   document.addEventListener('click', e => {

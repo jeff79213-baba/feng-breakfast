@@ -4,7 +4,7 @@ import {
 } from '../core.js';
 import { CATEGORIES } from '../menu-lib.js';
 import { loadDay, saveDay, loadConfig, Debouncer } from '../dslib.js';
-import { go, ctx } from '../app.js';
+import { go, ctx, toast } from '../app.js';
 import { el } from './dom.js';
 
 const $ = id => document.getElementById(id);
@@ -190,6 +190,11 @@ export async function renderDay(date) {
   const sug = el('p', 'suggest');
   sug.id = 'suggestLine';
   sugCard.append(meta, sug);
+  const applyBtn = el('button', 'btn btn-sm btn-primary', '套用建議');
+  applyBtn.type = 'button';
+  applyBtn.style.marginTop = '8px';
+  applyBtn.addEventListener('click', applySuggestion);
+  sugCard.appendChild(applyBtn);
   body.appendChild(sugCard);
 
   body.appendChild(renderDishCard());
@@ -199,6 +204,28 @@ export async function renderDay(date) {
   refreshSuggest();
 
   document.dispatchEvent(new CustomEvent('fz:day-rendered', { detail: { date } }));
+}
+
+async function applySuggestion() {
+  const rooms = peopleFor(ctx.target, state.day.head.b1, state.day.head.b2).rooms;
+  const counts = { ...suggestDishes(rooms), ...suggestFruitDessert(rooms) };
+  const lib = (state.cfg && state.cfg.dishLib) || {};
+  const cur = state.day.dishes[ctx.target];
+  let filled = 0;
+  for (const cat of CATEGORIES) {
+    if ((cur[cat.key] || []).length) continue;
+    const names = (lib[cat.key] || []).slice(0, Math.max(0, counts[cat.key] || 0));
+    if (!names.length) continue;
+    cur[cat.key] = names;
+    filled++;
+  }
+  if (!filled) {
+    toast(rooms ? '每類都有菜了，無需套用' : '先輸入人數才有建議可套用');
+    return;
+  }
+  await saveDay(state.date, { dishes: { [ctx.target]: cur } });
+  toast(`已按建議帶入 ${filled} 類`);
+  go('day', { date: state.date });
 }
 
 export function mountDay() {
