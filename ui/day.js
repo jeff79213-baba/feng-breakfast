@@ -205,7 +205,7 @@ export async function renderDay(date) {
   const applyBtn = el('button', 'btn btn-sm btn-primary', '套用建議');
   applyBtn.type = 'button';
   applyBtn.addEventListener('click', applySuggestion);
-  const copyBtn = el('button', 'btn btn-sm btn-ghost', '複製到 LINE');
+  const copyBtn = el('button', 'btn btn-sm btn-ghost', '一鍵複製');
   copyBtn.type = 'button';
   copyBtn.addEventListener('click', copyLine);
   actions.append(applyBtn, copyBtn);
