@@ -5,7 +5,8 @@ import {
 import { CATEGORIES } from '../menu-lib.js';
 import { loadDay, saveDay, loadConfig, Debouncer } from '../dslib.js';
 import { go, ctx, toast } from '../app.js';
-import { el } from './dom.js';
+import { el, copyText } from './dom.js';
+import { buildLineMessage, LINE_TARGETS } from '../line.js';
 
 const $ = id => document.getElementById(id);
 
@@ -21,6 +22,8 @@ export const TARGET_LABEL = { b1: '一館', b2: '二館', all: '一館+二館' }
 export const state = { date: null, day: null, cfg: null, stripStart: null };
 
 export function getDay() { return state; }
+
+const copyScope = { b1: true, b2: true, all: true };
 
 const headSaver = new Debouncer(async payload => {
   await saveDay(payload.date, { head: payload.head });
@@ -199,11 +202,30 @@ export async function renderDay(date) {
   const sug = el('p', 'suggest');
   sug.id = 'suggestLine';
   sugCard.append(meta, sug);
+  const actions = el('div', 'btn-row');
   const applyBtn = el('button', 'btn btn-sm btn-primary', '套用建議');
   applyBtn.type = 'button';
-  applyBtn.style.marginTop = '8px';
   applyBtn.addEventListener('click', applySuggestion);
-  sugCard.appendChild(applyBtn);
+  const copyBtn = el('button', 'btn btn-sm btn-ghost', '複製到 LINE');
+  copyBtn.type = 'button';
+  copyBtn.addEventListener('click', copyLine);
+  actions.append(applyBtn, copyBtn);
+  sugCard.appendChild(actions);
+
+  const scope = el('div', 'copy-scope');
+  scope.appendChild(el('span', 'copy-scope-label', '複製範圍'));
+  for (const t of LINE_TARGETS) {
+    const item = el('label', 'copy-scope-item');
+    const cb = el('input');
+    cb.type = 'checkbox';
+    cb.checked = copyScope[t.key];
+    cb.addEventListener('change', () => { copyScope[t.key] = cb.checked; });
+    item.appendChild(cb);
+    item.appendChild(document.createTextNode(t.label));
+    scope.appendChild(item);
+  }
+  sugCard.appendChild(scope);
+
   body.appendChild(sugCard);
 
   body.appendChild(renderDishCard());
@@ -213,6 +235,17 @@ export async function renderDay(date) {
   refreshSuggest();
 
   document.dispatchEvent(new CustomEvent('fz:day-rendered', { detail: { date } }));
+}
+
+async function copyLine() {
+  const targets = LINE_TARGETS.map(t => t.key).filter(k => copyScope[k]);
+  if (!targets.length) {
+    toast('請至少勾選一個館別');
+    return;
+  }
+  const text = buildLineMessage({ date: state.date, day: state.day, cfg: state.cfg }, targets);
+  const ok = await copyText(text);
+  toast(ok ? '已複製，可貼到 LINE' : '複製失敗，請長按選取');
 }
 
 async function applySuggestion() {

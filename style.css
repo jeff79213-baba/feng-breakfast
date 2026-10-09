@@ -267,6 +267,20 @@ body { padding-bottom: env(safe-area-inset-bottom); }
 
 .suggest { margin: 0 0 10px; padding: 8px 10px; background: #f2f7f4; border-radius: 8px; font-size: 13px; color: var(--brand-dark); }
 
+.btn-row { display: flex; gap: 8px; margin-top: 8px; }
+.copy-scope {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 10px;
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+.copy-scope-label { flex: none; }
+.copy-scope-item { display: inline-flex; align-items: center; gap: 4px; cursor: pointer; }
+.copy-scope-item input { width: 18px; height: 18px; flex: none; accent-color: var(--brand); }
+
 .dish-line {
   display: flex;
   align-items: baseline;
