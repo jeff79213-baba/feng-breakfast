@@ -56,6 +56,18 @@ test('未驗證 email 的登入者不能讀每日資料', async () => {
   await assertFails(getDoc(doc(db, 'fz_days', '2026-10-04')));
 });
 
+test('密碼供應商帳號未驗證仍以名單判定可讀寫', async () => {
+  await seedMember('pw@fz.app', 'editor');
+  const db = env.authenticatedContext('pw', {
+    email: 'pw@fz.app', email_verified: false,
+    firebase: { sign_in_provider: 'password' },
+  }).firestore();
+  await assertSucceeds(getDoc(doc(db, 'fz_days', '2026-10-04')));
+  await assertSucceeds(setDoc(doc(db, 'fz_days', '2026-10-04'), {
+    b1: { rooms: 5, adult: 10, child: 0, infant: 0, dishes: {}, extra: {} },
+  }));
+});
+
 test('不在名單內的登入者不能讀寫每日資料', async () => {
   const db = asUser('ghost@gmail.com');
   await assertFails(getDoc(doc(db, 'fz_days', '2026-10-04')));

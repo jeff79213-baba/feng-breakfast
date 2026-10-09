@@ -7,7 +7,7 @@ import {
   DEFAULT_PREP, DEFAULT_SLOTS, DEFAULT_PANTRY,
   prepBase, prepLine, drinkTotals, pantrySplit, summaryLine,
   ROLES, normalizeEmail, isValidEmail, isValidRole, roleLabel, memberOf,
-  ACCOUNT_DOMAIN, accountToEmail,
+  ACCOUNT_DOMAIN, accountToEmail, DEFAULT_MEMBER_PASSWORD, isValidPassword,
   csvEscape, buildCsv,
 } from '../core.js';
 
@@ -353,6 +353,17 @@ test('accountToEmail 短帳號自動補網域', () => {
 test('accountToEmail 已是完整信箱則直接採用', () => {
   assert.equal(accountToEmail('wind@fzbf.app'), 'wind@fzbf.app');
   assert.equal(accountToEmail('Boss@Gmail.COM'), 'boss@gmail.com');
+});
+
+test('isValidPassword 只接受至少 6 碼的字串', () => {
+  assert.equal(DEFAULT_MEMBER_PASSWORD, '000000');
+  assert.equal(isValidPassword(DEFAULT_MEMBER_PASSWORD), true);
+  assert.equal(isValidPassword('12345678'), true);
+  assert.equal(isValidPassword('12345'), false);
+  assert.equal(isValidPassword(''), false);
+  assert.equal(isValidPassword(null), false);
+  assert.equal(isValidPassword(undefined), false);
+  assert.equal(isValidPassword(123456), false);
 });
 
 test('accountToEmail 擋掉非法輸入與路徑穿越', () => {

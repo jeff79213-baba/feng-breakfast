@@ -1,7 +1,8 @@
-import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js';
+import { initializeApp, deleteApp } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js';
 import {
   getAuth, onAuthStateChanged, getRedirectResult, signInWithPopup, signInWithRedirect,
-  signInWithEmailAndPassword, EmailAuthProvider, reauthenticateWithCredential, updatePassword,
+  signInWithEmailAndPassword, createUserWithEmailAndPassword, deleteUser,
+  EmailAuthProvider, reauthenticateWithCredential, updatePassword,
   GoogleAuthProvider, signOut,
 } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js';
 import {
@@ -10,7 +11,7 @@ import {
 
 import {
   DEFAULT_PREP, DEFAULT_SLOTS, DEFAULT_PANTRY,
-  normalizeEmail, isValidEmail, isValidRole, memberOf, accountToEmail,
+  normalizeEmail, isValidEmail, isValidRole, isValidPassword, memberOf, accountToEmail,
 } from './core.js';
 import { DEFAULT_DISH_LIB } from './menu-lib.js';
 
@@ -131,6 +132,31 @@ export async function addMember(rawEmail, role) {
     addedAt: serverTimestamp(),
     addedBy: myEmail(),
   });
+  return email;
+}
+
+export async function createMemberAccount(rawAccount, password, role = 'editor') {
+  initFirebase();
+  const email = accountToEmail(rawAccount);
+  if (!email) throw new Error('帳號格式不正確，請輸入短帳號');
+  if (!isValidPassword(password)) throw new Error('密碼至少 6 碼');
+  if (!isValidRole(role)) throw new Error('角色不正確');
+  const secondary = initializeApp(FIREBASE_CONFIG, 'fz-provisioning');
+  const secondaryAuth = getAuth(secondary);
+  let cred = null;
+  try {
+    cred = await createUserWithEmailAndPassword(secondaryAuth, email, password);
+    await addMember(email, role);
+  } catch (e) {
+    if (cred) await deleteUser(cred.user).catch(() => {});
+    if (e && e.code === 'auth/email-already-in-use') {
+      throw new Error('此帳號已建立過，網頁無法重設密碼；請本人登入後自行更改，或用電腦指令重設');
+    }
+    throw e;
+  } finally {
+    await signOut(secondaryAuth).catch(() => {});
+    await deleteApp(secondary).catch(() => {});
+  }
   return email;
 }
 

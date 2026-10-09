@@ -272,6 +272,12 @@ export function memberOf(email, data) {
 
 export const ACCOUNT_DOMAIN = 'fzbf.app';
 
+export const DEFAULT_MEMBER_PASSWORD = '000000';
+
+export function isValidPassword(value) {
+  return typeof value === 'string' && value.length >= 6;
+}
+
 const SHORT_ACCOUNT_RE = /^[a-z0-9][a-z0-9._-]{0,63}$/;
 
 export function accountToEmail(raw) {

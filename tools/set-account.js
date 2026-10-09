@@ -41,7 +41,7 @@ async function list() {
   const { db } = admin();
   const snap = await db.collection('fz_users').get();
   if (snap.empty) {
-    console.log('名單是空的。開第一個主帳號：node tools/set-account.js wind 000000 admin');
+    console.log('名單是空的。開第一個主帳號：node tools/set-account.js wind <新密碼> admin');
     return;
   }
   snap.forEach(d => console.log(`- ${d.id}  ${(d.data() || {}).role}`));

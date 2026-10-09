@@ -1,6 +1,6 @@
 import { CATEGORIES } from '../menu-lib.js';
-import { roleLabel, ACCOUNT_DOMAIN } from '../core.js';
-import { loadConfig, saveConfig, listMembers, addMember, setMemberRole, removeMember, isPasswordAccount, changeOwnPassword } from '../dslib.js';
+import { roleLabel, ACCOUNT_DOMAIN, DEFAULT_MEMBER_PASSWORD, isValidPassword } from '../core.js';
+import { loadConfig, saveConfig, listMembers, addMember, createMemberAccount, setMemberRole, removeMember, isPasswordAccount, changeOwnPassword } from '../dslib.js';
 import { go, ctx, toast } from '../app.js';
 import { el } from './dom.js';
 
@@ -231,7 +231,7 @@ function dishLibCard() {
 
 function memberCard() {
   const c = card('人員管理');
-  c.appendChild(el('p', 'hint', '把員工加入名單就能登入，離職時刪除那一列即可。刪除只停用權限，登入帳號殘留需在電腦執行清除：node tools/set-account.js 短帳號 --remove。'));
+  c.appendChild(el('p', 'hint', '輸入短帳號＋密碼即可建立員工帳密；Google 登入者輸入完整 Gmail。離職刪除那一列即停用權限，登入帳號殘留需在電腦執行清除：node tools/set-account.js 短帳號 --remove。'));
   const list = el('div');
   list.id = 'memberList';
 
@@ -285,32 +285,55 @@ function memberCard() {
     email.id = 'newMemberEmail';
     email.inputMode = 'latin';
     email.autocomplete = 'off';
-    email.style.width = '190px';
+    email.style.width = '150px';
     email.setAttribute('aria-label', '新增人員帳號');
+    const pwWrap = el('span', 'pw-wrap');
+    const pw = el('input');
+    pw.type = 'password';
+    pw.id = 'newMemberPassword';
+    pw.value = DEFAULT_MEMBER_PASSWORD;
+    pw.autocomplete = 'new-password';
+    pw.style.width = '120px';
+    pw.setAttribute('aria-label', '新帳號密碼');
+    const pwToggle = el('button', 'pw-toggle', '顯示');
+    pwToggle.type = 'button';
+    pwToggle.setAttribute('aria-label', '顯示密碼');
+    pwToggle.addEventListener('click', () => {
+      const show = pw.type === 'password';
+      pw.type = show ? 'text' : 'password';
+      pwToggle.textContent = show ? '隱藏' : '顯示';
+      pwToggle.setAttribute('aria-label', show ? '隱藏密碼' : '顯示密碼');
+    });
+    pwWrap.appendChild(pw);
+    pwWrap.appendChild(pwToggle);
     const btn = el('button', 'btn btn-sm btn-primary', '＋加入');
     btn.type = 'button';
     const note = el('p', 'hint', '');
     btn.addEventListener('click', async () => {
+      const value = email.value.trim();
       try {
-        const added = await addMember(email.value, 'editor');
-        email.value = '';
-        const short = added.endsWith('@' + ACCOUNT_DOMAIN)
-          ? added.slice(0, -(ACCOUNT_DOMAIN.length + 1)) : null;
-        if (short) {
-          toast('已加入白名單，還需設密碼才能登入');
-          note.textContent = `已加入 ${added}（預設為員工）。請在電腦執行設定密碼後才能用帳密登入：node tools/set-account.js ${short} <密碼> editor`;
-        } else {
+        if (value.includes('@')) {
+          const added = await addMember(value, 'editor');
           toast('已加入，可直接用 Google 登入');
-          note.textContent = `已加入 ${added}（預設為員工），對方可直接用 Google 登入，無需密碼。`;
+          note.textContent = `已加入 ${added}（員工），對方請用「使用 Google 登入」，無需密碼。`;
+        } else {
+          if (!isValidPassword(pw.value)) return toast('密碼至少 6 碼');
+          const added = await createMemberAccount(value, pw.value, 'editor');
+          const short = added.slice(0, -(ACCOUNT_DOMAIN.length + 1));
+          toast('已建立，可用帳密登入');
+          note.textContent = `已建立 ${added}（員工）。請用帳號「${short}」＋你設定的密碼登入；登入後可到「我的帳號」自行更改密碼。`;
+          pw.value = DEFAULT_MEMBER_PASSWORD;
         }
+        email.value = '';
         paint();
       } catch (e) { toast(e.message); }
     });
     add.appendChild(email);
+    add.appendChild(pwWrap);
     add.appendChild(btn);
     list.appendChild(add);
     list.appendChild(note);
-    list.appendChild(el('p', 'hint', '輸入短帳號即可，系統自動補上網域；Google 登入的請輸入完整 Gmail。'));
+    list.appendChild(el('p', 'hint', '短帳號＝帳密登入（系統自動補網域）；完整 Gmail＝Google 登入，無需密碼。'));
   };
 
   const wrap = el('div');
