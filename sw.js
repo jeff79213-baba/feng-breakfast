@@ -1,4 +1,4 @@
-const CACHE = 'fz-shell-v4';
+const CACHE = 'fz-shell-v5';
 const SHELL = [
   './',
   './index.html',
@@ -19,7 +19,11 @@ const SHELL = [
 ];
 
 self.addEventListener('install', e => {
-  e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));
+  e.waitUntil(
+    caches.open(CACHE)
+      .then(c => c.addAll(SHELL.map(u => new Request(u, { cache: 'reload' }))))
+      .then(() => self.skipWaiting()),
+  );
 });
 
 self.addEventListener('activate', e => {

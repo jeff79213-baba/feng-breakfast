@@ -53,19 +53,21 @@ function renderHead() {
     for (const f of HEAD_FIELDS) {
       const label = el('label');
       label.appendChild(el('span', null, f.label));
+      const init = state.day.head[side][f.key] || 0;
       const input = el('input');
       input.type = 'number';
       input.inputMode = 'numeric';
       input.min = '0';
-      input.value = String(state.day.head[side][f.key] || 0);
+      input.placeholder = '0';
+      input.value = init ? String(init) : '';
       input.dataset.side = side;
       input.dataset.field = f.key;
       input.addEventListener('focus', () => {
-        if (input.value === '0') input.value = '';
-        else input.select();
+        if (input.value) input.select();
       });
       input.addEventListener('blur', () => {
-        if (input.value.trim() === '') input.value = '0';
+        const n = Math.max(0, Math.floor(Number(input.value) || 0));
+        input.value = n ? String(n) : '';
       });
       label.appendChild(input);
       box.appendChild(label);
