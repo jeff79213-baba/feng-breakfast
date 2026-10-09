@@ -1,4 +1,4 @@
-const CACHE = 'fz-shell-v3';
+const CACHE = 'fz-shell-v4';
 const SHELL = [
   './',
   './index.html',

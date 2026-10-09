@@ -60,6 +60,13 @@ function renderHead() {
       input.value = String(state.day.head[side][f.key] || 0);
       input.dataset.side = side;
       input.dataset.field = f.key;
+      input.addEventListener('focus', () => {
+        if (input.value === '0') input.value = '';
+        else input.select();
+      });
+      input.addEventListener('blur', () => {
+        if (input.value.trim() === '') input.value = '0';
+      });
       label.appendChild(input);
       box.appendChild(label);
     }
