@@ -137,3 +137,13 @@ node tools/set-admin.js <Gmail> admin
 - 執行帳本（本機、未進版控）：`.superpowers/sdd/progress.md`，內含前 24 個 Task 的進度與本次架構變更紀錄
 - 本次提交（依時間序）：`d143bb4`（Google 登入 + 名單制）、`916e362`（白名單集合改名 `fz_users`），最後一筆是這份報告本身的 `docs:` commit（看 `git log --oneline -1`）
 - 要用 `firebase` CLI 之外的 API（授權網域、Hosting、Functions 狀態）時：用金鑰簽 JWT 換 `https://www.googleapis.com/auth/cloud-platform` 的 access token，已驗證可行；**記得腳本要放在專案目錄內**，放 `/tmp` 會 `ERR_MODULE_NOT_FOUND`（找不到 `node_modules`）
+
+## 11. 共用 rules 防呆（2026-10-13 補）
+
+背景：`opencode-sk` 是多 App 共用專案，但 Firestore 規則全專案只有一份，部署＝整份換掉。10-07 曾用只有自家段落的檔案部署，洗掉庫存（`inv_*`）與葡眾（`uv_*`）的段落。教訓：動 rules 前一定要先比對線上版。
+
+鐵律：**動 `firestore.rules` 一律走 `npm run deploy:safe`**（會先跑 `tools/check-rules-drift.js --strict`，線上有的段落本地沒有就直接中止）。平時可用 `npm run rules:drift` 只檢查不部署。
+
+已知現況（2026-10-13）：線上版比本地多 `mpc-shortlinks`、`mpc-store-codes` 兩段（10-10 有人直接在線上加的）。在把那兩段併回本地 `firestore.rules` 之前，**絕對不要跑 `npm run deploy`**，否則 mpc 會再斷一次。
+
+要查發布史：firebaserules API `GET /v1/projects/opencode-sk/rulesets`（可以看到每一次部署的時間點，抓凶手用）。

@@ -7,7 +7,9 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:rules": "vitest run --config vitest.rules.config.js",
-    "deploy": "firebase deploy --only hosting,firestore"
+    "deploy": "firebase deploy --only hosting,firestore",
+    "deploy:safe": "node tools/check-rules-drift.js --strict && firebase deploy --only hosting,firestore",
+    "rules:drift": "node tools/check-rules-drift.js"
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "5.0.2",
