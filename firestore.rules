@@ -6,19 +6,21 @@ service cloud.firestore {
       return request.auth != null && (
         request.auth.token.email_verified == true
         || request.auth.token.firebase.sign_in_provider == 'password'
+        || request.auth.token.firebase.sign_in_provider == 'emailLink'
+        || request.auth.token.sign_in_provider == 'password'
       );
     }
 
     function myEmail() {
-      return signedIn() ? request.auth.token.email.lower() : '';
+      return signedIn() && request.auth.token.email != null ? request.auth.token.email.lower() : '';
     }
 
     function hasMemberDoc() {
-      return signedIn() ? exists(/databases/$(database)/documents/fz_users/$(myEmail())) : false;
+      return signedIn() && myEmail() != '' ? exists(/databases/$(database)/documents/fz_users/$(myEmail())) : false;
     }
 
     function memberRole() {
-      return hasMemberDoc() ? get(/databases/$(database)/documents/fz_users/$(myEmail())).data.role : null;
+      return hasMemberDoc() && myEmail() != '' ? get(/databases/$(database)/documents/fz_users/$(myEmail())).data.role : null;
     }
 
     function isMember() {
@@ -30,7 +32,7 @@ service cloud.firestore {
     }
 
     match /fz_users/{memberEmail} {
-      allow read: if isAdmin() || (signedIn() && memberEmail.lower() == myEmail());
+      allow read: if isAdmin() || (signedIn() && myEmail() != '' && memberEmail.lower() == myEmail());
       allow create, update: if isAdmin()
         && request.resource.data.keys().hasOnly(['role', 'addedAt', 'addedBy'])
         && request.resource.data.role in ['admin', 'editor']
