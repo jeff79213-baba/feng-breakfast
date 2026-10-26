@@ -53,9 +53,9 @@ function renderRow(item) {
   const eq = el('span', 'prep-eq');
   const extra = el('input');
   extra.type = 'number';
-  extra.inputMode = 'numeric';
+  extra.inputMode = 'decimal';
   extra.min = '0';
-  extra.step = '0.5';
+  extra.step = 'any';
   extra.value = String(state.day.prep[item.key].extra || 0);
   extra.setAttribute('aria-label', item.label + '額外增加');
   extra.addEventListener('change', async () => {
@@ -109,7 +109,8 @@ function renderCustomRow(item) {
 
   const qty = el('input', 'qty');
   qty.type = 'number';
-  qty.inputMode = 'numeric';
+  qty.inputMode = 'decimal';
+  qty.step = 'any';
   qty.min = '0';
   qty.value = String(item.qty || 0);
   qty.setAttribute('aria-label', item.name + '數量');
@@ -147,7 +148,8 @@ export function renderPrepCard() {
   name.setAttribute('aria-label', '新自訂備料名稱');
   const qty = el('input', 'qty');
   qty.type = 'number';
-  qty.inputMode = 'numeric';
+  qty.inputMode = 'decimal';
+  qty.step = 'any';
   qty.min = '0';
   qty.value = '0';
   qty.setAttribute('aria-label', '新自訂備料數量');
@@ -210,7 +212,8 @@ export function renderDrinkCard() {
 
     const milk = el('input', 'qty');
     milk.type = 'number';
-    milk.inputMode = 'numeric';
+    milk.inputMode = 'decimal';
+    milk.step = 'any';
     milk.min = '0';
     milk.value = String(row.milk);
     milk.setAttribute('aria-label', row.label + ' 牛奶數量');
@@ -225,7 +228,8 @@ export function renderDrinkCard() {
 
     const foil = el('input', 'qty');
     foil.type = 'number';
-    foil.inputMode = 'numeric';
+    foil.inputMode = 'decimal';
+    foil.step = 'any';
     foil.min = '0';
     foil.value = String(row.foil);
     foil.setAttribute('aria-label', row.label + ' 鋁箔包數量');

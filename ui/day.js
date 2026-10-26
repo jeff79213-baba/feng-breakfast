@@ -60,14 +60,12 @@ function renderHead() {
       const input = el('input');
       input.type = 'number';
       input.inputMode = 'numeric';
+      input.step = '1';
       input.min = '0';
       input.placeholder = '0';
       input.value = init ? String(init) : '';
       input.dataset.side = side;
       input.dataset.field = f.key;
-      input.addEventListener('focus', () => {
-        if (input.value) input.select();
-      });
       input.addEventListener('blur', () => {
         const n = Math.max(0, Math.floor(Number(input.value) || 0));
         input.value = n ? String(n) : '';

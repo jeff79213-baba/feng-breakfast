@@ -34,7 +34,8 @@ function row({ label, checked, color, qty, onToggle, onQty }) {
   if (qty) {
     const input = el('input', 'qty');
     input.type = 'number';
-    input.inputMode = 'numeric';
+    input.inputMode = 'decimal';
+    input.step = 'any';
     input.min = '0';
     input.value = String(qty);
     input.addEventListener('change', () => onQty(Number(input.value) || 0));

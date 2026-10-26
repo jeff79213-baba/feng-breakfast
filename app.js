@@ -11,6 +11,20 @@ export const ctx = {
 
 const VIEWS = ['auth', 'denied', 'calendar', 'day', 'check', 'settings'];
 
+const SELECTABLE_INPUT_TYPES = new Set(['text', 'number', 'password', 'tel', 'search', 'url', 'email']);
+
+function selectInputValue(input) {
+  if (!SELECTABLE_INPUT_TYPES.has(input.type)) return;
+  if (input.readOnly || input.disabled || !input.value) return;
+  try { input.select(); } catch (_) {}
+}
+
+document.addEventListener('focusin', e => {
+  if (e.target instanceof HTMLInputElement) {
+    requestAnimationFrame(() => selectInputValue(e.target));
+  }
+});
+
 export function go(view, params = {}) {
   if (!VIEWS.includes(view)) throw new Error('unknown view: ' + view);
   ctx.view = view;

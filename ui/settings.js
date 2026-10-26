@@ -14,13 +14,13 @@ function card(title) {
   return c;
 }
 
-function numberRow(label, value, step, onSave) {
+function numberRow(label, value, onSave) {
   const row = el('div', 'set-row');
   row.appendChild(el('span', 'label', label));
   const input = el('input');
   input.type = 'number';
   input.inputMode = 'decimal';
-  input.step = step;
+  input.step = 'any';
   input.value = String(value);
   input.setAttribute('aria-label', label);
   input.addEventListener('change', () => onSave(Number(input.value) || 0));
@@ -36,14 +36,14 @@ function prepCard() {
     await saveConfig({ prep: cfg.prep, updatedBy: (ctx.session && ctx.session.email) || null });
     toast('已儲存');
   };
-  c.appendChild(numberRow('飯／大人', p.riceAdult, '0.01', v => save({ riceAdult: v })));
-  c.appendChild(numberRow('飯／小孩（含嬰幼兒）', p.riceChild, '0.01', v => save({ riceChild: v })));
-  c.appendChild(numberRow('粥／大人', p.porridgeAdult, '0.01', v => save({ porridgeAdult: v })));
-  c.appendChild(numberRow('粥／小孩（含嬰幼兒）', p.porridgeChild, '0.01', v => save({ porridgeChild: v })));
-  c.appendChild(numberRow('蛋／人（倍率）', p.eggRatio, '0.1', v => save({ eggRatio: v })));
-  c.appendChild(numberRow('蛋／庫存扣除', p.eggStock, '1', v => save({ eggStock: v })));
-  c.appendChild(numberRow('蛋／預留顆數', p.eggReserveCount, '1', v => save({ eggReserveCount: v })));
-  c.appendChild(numberRow('蛋／預留百分比', p.eggReservePct, '1', v => save({ eggReservePct: v })));
+  c.appendChild(numberRow('飯／大人', p.riceAdult, v => save({ riceAdult: v })));
+  c.appendChild(numberRow('飯／小孩（含嬰幼兒）', p.riceChild, v => save({ riceChild: v })));
+  c.appendChild(numberRow('粥／大人', p.porridgeAdult, v => save({ porridgeAdult: v })));
+  c.appendChild(numberRow('粥／小孩（含嬰幼兒）', p.porridgeChild, v => save({ porridgeChild: v })));
+  c.appendChild(numberRow('蛋／人（倍率）', p.eggRatio, v => save({ eggRatio: v })));
+  c.appendChild(numberRow('蛋／庫存扣除', p.eggStock, v => save({ eggStock: v })));
+  c.appendChild(numberRow('蛋／預留顆數', p.eggReserveCount, v => save({ eggReserveCount: v })));
+  c.appendChild(numberRow('蛋／預留百分比', p.eggReservePct, v => save({ eggReservePct: v })));
   return c;
 }
 
@@ -63,6 +63,7 @@ function bracketCard() {
     const roomsInput = el('input');
     roomsInput.type = 'number';
     roomsInput.inputMode = 'numeric';
+    roomsInput.step = '1';
     roomsInput.min = '0';
     roomsInput.value = String(row.rooms);
     roomsInput.setAttribute('aria-label', '級距房間數');
@@ -94,6 +95,7 @@ function bracketCard() {
       const inp = el('input');
       inp.type = 'number';
       inp.inputMode = 'numeric';
+      inp.step = '1';
       inp.min = '0';
       inp.value = String(row[cat.key] || 0);
       inp.setAttribute('aria-label', cat.label + '建議道數');
@@ -165,6 +167,8 @@ function slotCard() {
 
     const milk = el('input');
     milk.type = 'number';
+    milk.inputMode = 'decimal';
+    milk.step = 'any';
     milk.value = String(slot.milk ?? 1);
     milk.placeholder = '牛奶';
     milk.setAttribute('aria-label', slot.label + ' 預設牛奶');
@@ -177,6 +181,8 @@ function slotCard() {
 
     const foil = el('input');
     foil.type = 'number';
+    foil.inputMode = 'decimal';
+    foil.step = 'any';
     foil.value = String(slot.foil ?? 12);
     foil.placeholder = '鋁箔包';
     foil.setAttribute('aria-label', slot.label + ' 預設鋁箔包');
